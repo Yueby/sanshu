@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};
-use reqwest::Client;
+use reqwest::{Client, StatusCode};
 use ring::digest::{Context as ShaContext, SHA256};
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use serde::{Deserialize, Serialize};
@@ -109,8 +109,14 @@ impl AcemcpTool {
         let search_result = match search_only(&acemcp_config, &request.project_root_path, &request.query).await {
             Ok(text) => text,
             Err(e) => {
+                let error_text = e.to_string();
+                let display_text = if error_text.starts_with("代码搜索失败：") {
+                    error_text
+                } else {
+                    format!("Acemcp搜索失败: {}", error_text)
+                };
                 return Ok(CallToolResult {
-                    content: vec![Content::text(format!("Acemcp搜索失败: {}", e))],
+                    content: vec![Content::text(display_text)],
                     is_error: Some(true),
                     meta: None,
                     structured_content: None,
@@ -162,12 +168,20 @@ impl AcemcpTool {
                         meta: None,
                         structured_content: None,
                     }),
-                    Err(e) => Ok(CallToolResult { 
-                        content: vec![Content::text(format!("搜索失败: {}", e))], 
-                        is_error: Some(true),
-                        meta: None,
-                        structured_content: None,
-                    })
+                    Err(e) => {
+                        let error_text = e.to_string();
+                        let display_text = if error_text.starts_with("代码搜索失败：") {
+                            error_text
+                        } else {
+                            format!("搜索失败: {}", error_text)
+                        };
+                        Ok(CallToolResult { 
+                            content: vec![Content::text(display_text)], 
+                            is_error: Some(true),
+                            meta: None,
+                            structured_content: None,
+                        })
+                    }
                 }
             }
             Err(e) => Ok(CallToolResult { 
@@ -608,6 +622,8 @@ async fn start_background_index(
     let _ = update_project_status(project_root, |status| {
         status.status = IndexStatus::Indexing;
         status.progress = 0;
+        status.last_error = None;
+        status.last_failure_scope_hash = None;
     });
 
     let config_clone = config.clone();
@@ -622,6 +638,7 @@ async fn start_background_index(
                     status.status = IndexStatus::Failed;
                     status.last_error = Some(error_message.clone());
                     status.last_failure_time = Some(chrono::Utc::now());
+                    status.last_failure_scope_hash = None;
                 }
             });
         } else {
@@ -638,6 +655,12 @@ async fn start_background_index(
 /// 确保后台索引已启动（非阻塞）
 /// 仅在项目未初始化或索引失败时启动后台索引任务
 pub async fn ensure_initial_index_background(config: &AcemcpConfig, project_root: &str) -> anyhow::Result<()> {
+    let project_status = get_project_status(project_root);
+    if should_hold_on_auth_failure(config, project_root, &project_status) {
+        log_important!(info, "跳过后台索引：检测到 Token 认证失败，需用户手动更新配置: project_root={}", project_root);
+        return Ok(());
+    }
+
     let state = get_initial_index_state(project_root);
 
     match state {
@@ -670,6 +693,71 @@ fn normalize_base_url(input: &str) -> String {
     }
     while url.ends_with('/') { url.pop(); }
     url
+}
+
+const ACE_AUTH_FAILURE_MESSAGE: &str = "ACE API 认证失败 (401)：Token 已失效或被封禁，请在设置中更新 Token";
+const ACE_AUTH_FAILURE_SEARCH_MESSAGE: &str = "代码搜索失败：ACE API Token 已失效。请前往【设置 > MCP 工具 > 代码搜索工具】更新认证令牌后重试。";
+
+fn is_ace_auth_failure_error(message: &str) -> bool {
+    let lower = message.to_ascii_lowercase();
+    lower.contains("401")
+        || lower.contains("unauthorized")
+        || lower.contains("invalid token")
+        || message.contains("认证失败")
+}
+
+fn has_ace_auth_failure(status: &ProjectIndexStatus) -> bool {
+    status.status == IndexStatus::Failed
+        && status
+            .last_error
+            .as_deref()
+            .map(is_ace_auth_failure_error)
+            .unwrap_or(false)
+}
+
+fn mark_project_auth_failure(project_root: &str, scope_hash: Option<&str>) {
+    let failure_scope_hash = scope_hash.map(str::to_string);
+    let _ = update_project_status(project_root, |status| {
+        status.status = IndexStatus::Failed;
+        status.last_error = Some(ACE_AUTH_FAILURE_MESSAGE.to_string());
+        status.last_failure_time = Some(chrono::Utc::now());
+        status.last_failure_scope_hash = failure_scope_hash.clone();
+    });
+}
+
+fn should_hold_on_auth_failure(
+    config: &AcemcpConfig,
+    project_root: &str,
+    status: &ProjectIndexStatus,
+) -> bool {
+    if !has_ace_auth_failure(status) {
+        return false;
+    }
+
+    let current_scope_hash = build_index_scope_hash(config);
+    match (status.last_failure_scope_hash.as_deref(), current_scope_hash.as_deref()) {
+        (Some(failure_hash), Some(current_hash)) => failure_hash == current_hash,
+        (Some(_), None) => false,
+        (None, Some(current_hash)) => {
+            // 兼容历史状态：首次识别到认证失败时补写失败签名，后续在用户更新 Token 后可自动恢复。
+            let current_hash = current_hash.to_string();
+            let _ = update_project_status(project_root, |status| {
+                if has_ace_auth_failure(status) && status.last_failure_scope_hash.is_none() {
+                    status.last_failure_scope_hash = Some(current_hash.clone());
+                }
+            });
+            true
+        }
+        (None, None) => true,
+    }
+}
+
+pub(crate) fn should_skip_auto_index_for_auth_failure(
+    config: &AcemcpConfig,
+    project_root: &str,
+) -> bool {
+    let status = get_project_status(project_root);
+    should_hold_on_auth_failure(config, project_root, &status)
 }
 
 fn has_local_blob_names(project_root: &str) -> bool {
@@ -1215,6 +1303,9 @@ pub(crate) async fn update_index(config: &AcemcpConfig, project_root_path: &str)
     let _ = update_project_status(project_root_path, |status| {
         status.status = IndexStatus::Indexing;
         status.progress = 0;
+        // 新一轮索引开始时清理上一次失败提示，避免旧的 Token 告警干扰当前状态展示。
+        status.last_error = None;
+        status.last_failure_scope_hash = None;
     });
 
     // 日志：基础配置
@@ -1242,6 +1333,7 @@ pub(crate) async fn update_index(config: &AcemcpConfig, project_root_path: &str)
             status.status = IndexStatus::Failed;
             status.last_error = Some("未在项目中找到可索引的文本文件".to_string());
             status.last_failure_time = Some(chrono::Utc::now());
+            status.last_failure_scope_hash = None;
         });
         anyhow::bail!("未在项目中找到可索引的文本文件");
     }
@@ -1417,7 +1509,13 @@ pub(crate) async fn update_index(config: &AcemcpConfig, project_root_path: &str)
                     }
                 }
                 Err(e) => {
-                    log_important!(info, "批次 {} 上传失败: {}", i + 1, e);
+                    let error_message = e.to_string();
+                    log_important!(info, "批次 {} 上传失败: {}", i + 1, error_message);
+                    if is_ace_auth_failure_error(&error_message) {
+                        log_important!(info, "检测到 ACE API 认证失败，立即停止后续批次上传: project_root={}, batch={}", project_root_path, i + 1);
+                        mark_project_auth_failure(project_root_path, Some(current_scope_hash.as_str()));
+                        return Err(anyhow::anyhow!(ACE_AUTH_FAILURE_MESSAGE));
+                    }
                     failed_batches.push(i + 1);
                 }
             }
@@ -1451,6 +1549,7 @@ pub(crate) async fn update_index(config: &AcemcpConfig, project_root_path: &str)
             status.status = IndexStatus::Failed;
             status.last_error = Some("索引后未找到 blobs".to_string());
             status.last_failure_time = Some(chrono::Utc::now());
+            status.last_failure_scope_hash = None;
         });
         anyhow::bail!("索引后未找到 blobs");
     }
@@ -1479,6 +1578,7 @@ pub(crate) async fn update_index(config: &AcemcpConfig, project_root_path: &str)
         status.pending_files = 0;
         status.last_success_time = Some(chrono::Utc::now());
         status.last_error = None;
+        status.last_failure_scope_hash = None;
         status.index_scope_hash = Some(current_scope_hash.clone());
         status.is_stale = false;
         status.stale_reason = None;
@@ -1562,6 +1662,9 @@ async fn search_only(config: &AcemcpConfig, project_root_path: &str, query: &str
 
     let blob_names = projects.0.get(&normalized_root).cloned().unwrap_or_default();
     let project_status = get_project_status(project_root_path);
+    if should_hold_on_auth_failure(config, project_root_path, &project_status) {
+        anyhow::bail!(ACE_AUTH_FAILURE_SEARCH_MESSAGE);
+    }
     let scope_changed = is_index_scope_stale(&project_status, Some(current_scope_hash.as_str()), !blob_names.is_empty());
 
     if scope_changed {
@@ -1613,6 +1716,13 @@ async fn search_only(config: &AcemcpConfig, project_root_path: &str, query: &str
 
         let status = r.status();
         log_important!(info, "检索请求HTTP响应状态: {}", status);
+
+        if status == StatusCode::UNAUTHORIZED {
+            let body = r.text().await.unwrap_or_default();
+            log_important!(info, "检索请求遇到 ACE 认证失败: {}", body);
+            mark_project_auth_failure(project_root_path, Some(current_scope_hash.as_str()));
+            anyhow::bail!(ACE_AUTH_FAILURE_SEARCH_MESSAGE);
+        }
 
         if !status.is_success() {
             let body = r.text().await.unwrap_or_default();

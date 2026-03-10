@@ -32,7 +32,7 @@ interface Props {
 
 interface Emits {
   // 打开 MCP 工具设置页
-  'open-settings': []
+  'open-settings': [toolId?: string]
   // 打开索引详情 Modal
   'open-detail': []
   // 触发同步操作（增量/全量）
@@ -82,6 +82,21 @@ const hasNestedProjects = computed(() => {
   return (nestedStatus.value?.nested_projects?.length ?? 0) > 0
 })
 
+const isAuthFailure = computed(() => {
+  if (props.projectStatus?.status !== 'failed')
+    return false
+
+  const lastError = props.projectStatus?.last_error || ''
+  const lower = lastError.toLowerCase()
+  return lower.includes('401') || lower.includes('认证失败') || lower.includes('invalid token')
+})
+
+const authFailureMessage = computed(() => {
+  return props.projectStatus?.last_error || 'ACE API 认证失败 (401)：Token 已失效或被封禁，请在设置中更新 Token'
+})
+
+const authFailureHint = '更新完成后，可重新同步或等待自动索引恢复'
+
 // 嵌套项目列表
 const nestedProjects = computed(() => nestedStatus.value?.nested_projects ?? [])
 
@@ -96,7 +111,9 @@ const statusIcon = computed(() => {
     case 'synced':
       return 'i-carbon-checkmark-filled text-emerald-400'
     case 'failed':
-      return 'i-carbon-warning-filled text-rose-400'
+      return isAuthFailure.value
+        ? 'i-carbon-warning-alt-filled text-rose-400'
+        : 'i-carbon-warning-filled text-rose-400'
     default:
       return 'i-carbon-help text-gray-400'
   }
@@ -113,7 +130,7 @@ const statusText = computed(() => {
     case 'synced':
       return '已同步'
     case 'failed':
-      return '索引失败'
+      return isAuthFailure.value ? 'ACE Token 已失效' : '索引失败'
     default:
       return '未知'
   }
@@ -294,8 +311,8 @@ function handleResync(type: 'incremental' | 'full') {
 }
 
 // 打开设置页面
-function handleOpenSettings() {
-  emit('open-settings')
+function handleOpenSettings(toolId?: string) {
+  emit('open-settings', toolId)
 }
 
 // 打开索引详情 Modal
@@ -452,6 +469,34 @@ onMounted(() => {
       <!-- 展开内容区域 -->
       <n-collapse-transition :show="isExpanded">
         <div class="panel-content">
+          <div v-if="isAuthFailure" class="auth-failure-alert">
+            <div class="auth-failure-alert__icon">
+              <div class="i-carbon-warning-alt-filled" />
+            </div>
+            <div class="auth-failure-alert__content">
+              <div class="auth-failure-alert__title">
+                ACE Token 已失效，请更新配置
+              </div>
+              <div class="auth-failure-alert__desc">
+                {{ authFailureMessage }}
+              </div>
+              <div class="auth-failure-alert__hint">
+                {{ authFailureHint }}
+              </div>
+            </div>
+            <n-button
+              size="tiny"
+              type="error"
+              secondary
+              @click.stop="handleOpenSettings('sou')"
+            >
+              <template #icon>
+                <div class="i-carbon-settings-adjust" />
+              </template>
+              前往设置更新 Token
+            </n-button>
+          </div>
+
           <!-- 嵌套项目区域（如果有） -->
           <div v-if="hasNestedProjects || nestedError" class="nested-projects-section">
             <div class="section-header">
@@ -602,6 +647,55 @@ onMounted(() => {
 .guide-text {
   font-size: 12px;
   color: rgba(255, 255, 255, 0.65);
+}
+
+.auth-failure-alert {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(251, 113, 133, 0.25);
+  background: linear-gradient(135deg, rgba(127, 29, 29, 0.36) 0%, rgba(69, 10, 10, 0.2) 100%);
+}
+
+.auth-failure-alert__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  color: rgb(251 113 133);
+  background: rgba(127, 29, 29, 0.35);
+}
+
+.auth-failure-alert__content {
+  min-width: 0;
+  flex: 1;
+}
+
+.auth-failure-alert__title {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 228, 230, 0.96);
+}
+
+.auth-failure-alert__desc {
+  margin-top: 3px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: rgba(255, 228, 230, 0.8);
+  word-break: break-word;
+}
+
+.auth-failure-alert__hint {
+  margin-top: 5px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: rgba(254, 205, 211, 0.88);
 }
 
 /* ==================== 正常模式 - 头部状态条 ==================== */

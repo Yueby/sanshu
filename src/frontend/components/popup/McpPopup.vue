@@ -45,7 +45,7 @@ interface Emits {
   cancel: []
   themeChange: [theme: string]
   openMainLayout: []
-  openMcpToolsTab: []
+  openMcpToolsTab: [toolId?: string]
   toggleAlwaysOnTop: []
   toggleAudioNotification: []
   updateAudioUrl: [url: string]
@@ -477,8 +477,8 @@ function handleEnhanceCancel() {
 }
 
 // 处理跳转 MCP 工具页
-function handleOpenMcpToolsTab() {
-  emit('openMcpToolsTab')
+function handleOpenMcpToolsTab(toolId?: string) {
+  emit('openMcpToolsTab', toolId)
 }
 
 // 实际执行索引同步/重建

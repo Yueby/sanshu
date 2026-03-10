@@ -59,6 +59,15 @@ export function useAcemcpSync() {
     return null
   })
 
+  function isAuthFailureStatus(status: ProjectIndexStatus | null): boolean {
+    if (!status || status.status !== 'failed')
+      return false
+
+    const lastError = status.last_error || ''
+    const lower = lastError.toLowerCase()
+    return lower.includes('401') || lower.includes('认证失败') || lower.includes('invalid token')
+  }
+
   // 状态摘要文本
   const statusSummary = computed(() => {
     const status = currentProjectStatus.value
@@ -73,7 +82,7 @@ export function useAcemcpSync() {
       case 'synced':
         return '已同步'
       case 'failed':
-        return '索引失败'
+        return isAuthFailureStatus(status) ? 'Token 已失效' : '索引失败'
       default:
         return '未知状态'
     }
@@ -90,7 +99,9 @@ export function useAcemcpSync() {
       case 'synced':
         return 'i-carbon-checkmark-filled text-green-500'
       case 'failed':
-        return 'i-carbon-warning-filled text-red-500'
+        return isAuthFailureStatus(currentProjectStatus.value)
+          ? 'i-carbon-warning-alt-filled text-red-500'
+          : 'i-carbon-warning-filled text-red-500'
       default:
         return 'i-carbon-help text-gray-400'
     }

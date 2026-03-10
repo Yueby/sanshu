@@ -16,6 +16,7 @@ export interface ProjectIndexStatus {
   last_success_time: string | null
   last_failure_time: string | null
   last_error: string | null
+  last_failure_scope_hash?: string | null
   index_scope_hash?: string | null
   is_stale?: boolean
   stale_reason?: string | null

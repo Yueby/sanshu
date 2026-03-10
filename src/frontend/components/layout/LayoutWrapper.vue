@@ -23,6 +23,8 @@ interface Props {
   appConfig: AppConfig
   activeTab?: string
   projectRootPath?: string | null
+  autoOpenToolId?: string | null
+  autoOpenToolRequestId?: number
 }
 
 interface Emits {
@@ -36,6 +38,7 @@ interface Emits {
   updateWindowSize: [size: { width: number, height: number, fixed: boolean }]
   configReloaded: []
   'update:activeTab': [tab: string]
+  mcpToolAutoOpened: [requestId: number]
 }
 
 defineProps<Props>()
@@ -53,6 +56,8 @@ defineEmits<Emits>()
     :fixed-window-size="appConfig.window.fixed"
     :active-tab="activeTab"
     :project-root-path="projectRootPath || undefined"
+    :auto-open-tool-id="autoOpenToolId || undefined"
+    :auto-open-tool-request-id="autoOpenToolRequestId"
     @theme-change="$emit('themeChange', $event)"
     @toggle-always-on-top="$emit('toggleAlwaysOnTop')"
     @toggle-audio-notification="$emit('toggleAudioNotification')"
@@ -63,5 +68,6 @@ defineEmits<Emits>()
     @update-window-size="$emit('updateWindowSize', $event)"
     @config-reloaded="$emit('configReloaded')"
     @update:active-tab="$emit('update:activeTab', $event)"
+    @mcp-tool-auto-opened="$emit('mcpToolAutoOpened', $event)"
   />
 </template>

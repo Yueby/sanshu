@@ -11,7 +11,7 @@ use std::time::Duration;
 use tokio::sync::mpsc;
 
 use super::types::AcemcpConfig;
-use super::mcp::update_index;
+use super::mcp::{should_skip_auto_index_for_auth_failure, update_index};
 use crate::log_important;
 use crate::log_debug;
 
@@ -293,6 +293,15 @@ impl WatcherManager {
 
                 // 依次索引每个受影响的项目
                 for project_path in projects_to_index {
+                    if should_skip_auto_index_for_auth_failure(&latest_config, &project_path) {
+                        log_important!(
+                            info,
+                            "跳过自动索引：检测到 Token 认证失败，需用户手动更新配置: project={}",
+                            project_path
+                        );
+                        continue;
+                    }
+
                     match update_index(&latest_config, &project_path).await {
                         Ok(blob_names) => {
                             log_important!(

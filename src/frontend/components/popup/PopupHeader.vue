@@ -72,6 +72,12 @@ function handleOpenIndexStatus() {
     return
   emit('openIndexStatus')
 }
+
+function isAuthFailure(): boolean {
+  const lastError = props.mcpLastError || ''
+  const lower = lastError.toLowerCase()
+  return lower.includes('401') || lower.includes('认证失败') || lower.includes('invalid token')
+}
 </script>
 
 <template>
@@ -117,6 +123,9 @@ function handleOpenIndexStatus() {
             </div>
             <div>
               当前项目的代码索引由 Acemcp 后台维护，状态会自动轮询更新。
+            </div>
+            <div v-if="isAuthFailure()" class="text-red-600 dark:text-red-300 font-medium">
+              检测到 ACE Token 认证失败，请点击状态面板后前往设置更新 Token。
             </div>
             <div v-if="mcpIsIndexing">
               正在索引中，稍后搜索结果会更加完整。

@@ -17,6 +17,8 @@ interface Props {
   fixedWindowSize: boolean
   activeTab?: string
   projectRootPath?: string
+  autoOpenToolId?: string
+  autoOpenToolRequestId?: number
 }
 
 interface Emits {
@@ -30,6 +32,7 @@ interface Emits {
   updateWindowSize: [size: { width: number, height: number, fixed: boolean }]
   configReloaded: []
   'update:activeTab': [tab: string]
+  mcpToolAutoOpened: [requestId: number]
 }
 
 const props = defineProps<Props>()
@@ -156,7 +159,12 @@ function testPopup() {
             <IntroTab />
           </n-tab-pane>
           <n-tab-pane name="mcp-tools" tab="MCP 工具">
-            <McpToolsTab :project-root-path="projectRootPath" />
+            <McpToolsTab
+              :project-root-path="projectRootPath"
+              :auto-open-tool-id="props.autoOpenToolId"
+              :auto-open-tool-request-id="props.autoOpenToolRequestId"
+              @auto-open-handled="$emit('mcpToolAutoOpened', $event)"
+            />
           </n-tab-pane>
           <n-tab-pane name="prompts" tab="参考提示词">
             <PromptsTab />

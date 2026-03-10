@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useMessage } from 'naive-ui'
-import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
+import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
 import { useMcpToolsReactive } from '../../composables/useMcpTools'
 
 // 异步加载配置组件
@@ -10,8 +10,17 @@ const IconWorkshop = defineAsyncComponent(() => import('../tools/IconWorkshop/Ic
 const EnhanceConfig = defineAsyncComponent(() => import('../tools/EnhanceConfig.vue'))
 const MemoryConfig = defineAsyncComponent(() => import('../tools/MemoryConfig.vue'))
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   projectRootPath?: string | null
+  autoOpenToolId?: string | null
+  autoOpenToolRequestId?: number
+}>(), {
+  autoOpenToolId: null,
+  autoOpenToolRequestId: 0,
+})
+
+const emit = defineEmits<{
+  autoOpenHandled: [requestId: number]
 }>()
 
 // 全局 MCP 工具状态
@@ -27,6 +36,7 @@ const message = useMessage()
 const needsReconnect = ref(false)
 const showToolConfigModal = ref(false)
 const currentToolId = ref('')
+const lastHandledAutoOpenRequestId = ref(0)
 
 // 计算属性：当前工具名称
 const currentToolName = computed(() => {
@@ -53,6 +63,20 @@ function openToolConfig(toolId: string) {
   currentToolId.value = toolId
   showToolConfigModal.value = true
 }
+
+watch(
+  () => [props.autoOpenToolId, props.autoOpenToolRequestId] as const,
+  ([toolId, requestId]) => {
+    if (!toolId || !requestId || requestId === lastHandledAutoOpenRequestId.value)
+      return
+
+    // 通过 requestId 去重，避免组件重挂载时重复弹出 sou 配置。
+    lastHandledAutoOpenRequestId.value = requestId
+    openToolConfig(toolId)
+    emit('autoOpenHandled', requestId)
+  },
+  { immediate: true },
+)
 
 // 组件挂载时加载工具列表
 onMounted(async () => {

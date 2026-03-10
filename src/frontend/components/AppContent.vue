@@ -73,6 +73,8 @@ const { versionInfo, showUpdateModal } = useVersionCheck()
 const showPopupSettings = ref(false)
 // 设置界面当前激活的 Tab
 const activeTab = ref('intro')
+// 记录待自动打开的 MCP 工具配置，避免用户还要再点一次“配置”。
+const pendingMcpToolConfig = ref<{ toolId: string, requestId: number } | null>(null)
 // MCP 索引详情抽屉显示控制
 const showIndexDrawer = ref(false)
 // 全局日志查看器显示控制（用于“整个弹窗”的日志查看）
@@ -124,9 +126,20 @@ function togglePopupSettings() {
 }
 
 // 直接打开 MCP 工具页（用于 CTA 跳转）
-function openMcpToolsTab() {
+function openMcpToolsTab(toolId?: string) {
   activeTab.value = 'mcp-tools'
   showPopupSettings.value = true
+  if (toolId) {
+    pendingMcpToolConfig.value = {
+      toolId,
+      requestId: Date.now(),
+    }
+  }
+}
+
+function handleMcpToolAutoOpened(requestId: number) {
+  if (pendingMcpToolConfig.value?.requestId === requestId)
+    pendingMcpToolConfig.value = null
 }
 
 // 处理索引详情抽屉中的重新同步请求
@@ -155,6 +168,7 @@ watch(() => props.mcpRequest, (newRequest) => {
     // 有新的 MCP 请求时，自动切换回消息页面
     showPopupSettings.value = false
     activeTab.value = 'intro'
+    pendingMcpToolConfig.value = null
   }
 }, { immediate: true })
 
@@ -229,6 +243,8 @@ onUnmounted(() => {
           :app-config="props.appConfig"
           :active-tab="activeTab"
           :project-root-path="props.mcpRequest?.project_root_path || null"
+          :auto-open-tool-id="pendingMcpToolConfig?.toolId || null"
+          :auto-open-tool-request-id="pendingMcpToolConfig?.requestId || 0"
           @theme-change="$emit('themeChange', $event)"
           @toggle-always-on-top="$emit('toggleAlwaysOnTop')"
           @toggle-audio-notification="$emit('toggleAudioNotification')"
@@ -238,6 +254,7 @@ onUnmounted(() => {
           @test-audio-error="$emit('testAudioError', $event)"
           @update-window-size="$emit('updateWindowSize', $event)"
           @update:active-tab="activeTab = $event"
+          @mcp-tool-auto-opened="handleMcpToolAutoOpened"
         />
       </div>
 
@@ -353,6 +370,8 @@ onUnmounted(() => {
       :app-config="props.appConfig"
       :active-tab="activeTab"
       :project-root-path="null"
+      :auto-open-tool-id="pendingMcpToolConfig?.toolId || null"
+      :auto-open-tool-request-id="pendingMcpToolConfig?.requestId || 0"
       @theme-change="$emit('themeChange', $event)"
       @toggle-always-on-top="$emit('toggleAlwaysOnTop')"
       @toggle-audio-notification="$emit('toggleAudioNotification')"
@@ -363,6 +382,7 @@ onUnmounted(() => {
       @update-window-size="$emit('updateWindowSize', $event)"
       @config-reloaded="$emit('configReloaded')"
       @update:active-tab="activeTab = $event"
+      @mcp-tool-auto-opened="handleMcpToolAutoOpened"
     />
 
     <!-- 更新弹窗 -->

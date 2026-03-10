@@ -83,6 +83,9 @@ pub struct ProjectIndexStatus {
     pub last_failure_time: Option<DateTime<Utc>>,
     /// 最后错误信息
     pub last_error: Option<String>,
+    /// 最近一次认证失败所对应的索引空间签名
+    /// 用于在用户更新 Token 后恢复自动索引
+    pub last_failure_scope_hash: Option<String>,
     /// 当前项目最近一次成功索引所对应的索引空间签名
     /// 用于检测 base_url/token 变更后旧索引是否失效
     #[serde(default)]
@@ -113,6 +116,7 @@ impl Default for ProjectIndexStatus {
             last_success_time: None,
             last_failure_time: None,
             last_error: None,
+            last_failure_scope_hash: None,
             index_scope_hash: None,
             is_stale: false,
             stale_reason: None,
