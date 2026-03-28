@@ -24,7 +24,6 @@ const DEFAULT_MAX_RESULTS: u32 = 3;
 #[derive(Clone, Copy)]
 struct UiuxDefaults {
     lang: UiuxLang,
-    output_format: UiuxOutputFormat,
     max_results_cap: u32,
     beautify_enabled: bool,
 }
@@ -38,10 +37,6 @@ impl UiuxDefaults {
             .and_then(|c| c.uiux_default_lang.as_deref())
             .and_then(parse_lang)
             .unwrap_or(UiuxLang::Zh);
-        let output_format = mcp_config
-            .and_then(|c| c.uiux_output_format.as_deref())
-            .and_then(parse_output_format)
-            .unwrap_or(UiuxOutputFormat::Json);
         let max_results_cap = mcp_config
             .and_then(|c| c.uiux_max_results_cap)
             .unwrap_or(10)
@@ -52,7 +47,6 @@ impl UiuxDefaults {
 
         Self {
             lang,
-            output_format,
             max_results_cap,
             beautify_enabled,
         }
@@ -63,14 +57,6 @@ fn parse_lang(value: &str) -> Option<UiuxLang> {
     match value.trim().to_lowercase().as_str() {
         "zh" => Some(UiuxLang::Zh),
         "en" => Some(UiuxLang::En),
-        _ => None,
-    }
-}
-
-fn parse_output_format(value: &str) -> Option<UiuxOutputFormat> {
-    match value.trim().to_lowercase().as_str() {
-        "json" => Some(UiuxOutputFormat::Json),
-        "text" => Some(UiuxOutputFormat::Text),
         _ => None,
     }
 }
