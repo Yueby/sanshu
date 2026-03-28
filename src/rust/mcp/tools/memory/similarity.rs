@@ -76,8 +76,8 @@ impl TextSimilarity {
         let mut curr = vec![0usize; m + 1];
 
         // 初始化第一行
-        for j in 0..=m {
-            prev[j] = j;
+        for (j, slot) in prev.iter_mut().enumerate() {
+            *slot = j;
         }
 
         for i in 1..=n {
@@ -134,7 +134,7 @@ impl TextSimilarity {
         let mut min_dist = second.len();
         for (i, &c) in second.iter().enumerate() {
             if c == ch {
-                let dist = if i > pos { i - pos } else { pos - i };
+                let dist = i.abs_diff(pos);
                 min_dist = min_dist.min(dist);
             }
         }

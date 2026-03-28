@@ -1,6 +1,7 @@
 use tauri::{AppHandle, Emitter, State};
 use once_cell::sync::Lazy;
 use std::env;
+use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
@@ -60,7 +61,7 @@ fn get_acemcp_log_path() -> Result<std::path::PathBuf, String> {
     Ok(config_dir.join("sanshu").join("log").join("acemcp.log"))
 }
 
-fn ensure_acemcp_log_dir_exists(log_path: &std::path::PathBuf) -> Result<(), String> {
+fn ensure_acemcp_log_dir_exists(log_path: &Path) -> Result<(), String> {
     // 确保日志目录存在
     if let Some(log_dir) = log_path.parent() {
         if !log_dir.exists() {
@@ -1226,9 +1227,7 @@ fn normalize_path_key(path: &str) -> String {
         normalized = canon.to_string_lossy().to_string();
     }
     // 去除 Windows 扩展长度路径前缀
-    if normalized.starts_with("\\\\?\\") {
-        normalized = normalized[4..].to_string();
-    } else if normalized.starts_with("//?/") {
+    if normalized.starts_with("\\\\?\\") || normalized.starts_with("//?/") {
         normalized = normalized[4..].to_string();
     }
     // 统一使用正斜杠
@@ -1473,6 +1472,7 @@ pub async fn detect_acemcp_proxy(extra_ports: Option<Vec<u16>>) -> Result<Vec<De
 
 /// 代理测速命令
 /// 测试代理和直连模式下的网络延迟和搜索性能
+#[allow(clippy::too_many_arguments)]
 #[tauri::command]
 pub async fn test_acemcp_proxy_speed(
     app: AppHandle,               // 用于发送进度事件
@@ -1546,21 +1546,13 @@ pub async fn test_acemcp_proxy_speed(
     }
 
     // 构建代理设置（用于实际 HTTP 请求，支持 https + 认证）
-    let proxy_settings = if test_proxy {
-        if let Some(ref pi) = proxy_info {
-            Some(ProxySettings {
-                proxy_type: pi.proxy_type.clone(),
-                host: pi.host.clone(),
-                port: pi.port,
-                username: proxy_username.clone(),
-                password: proxy_password.clone(),
-            })
-        } else {
-            None
-        }
-    } else {
-        None
-    };
+    let proxy_settings = proxy_info.as_ref().map(|pi| ProxySettings {
+        proxy_type: pi.proxy_type.clone(),
+        host: pi.host.clone(),
+        port: pi.port,
+        username: proxy_username.clone(),
+        password: proxy_password.clone(),
+    });
 
     // 项目上传测速策略（按 zhi 确认：默认采样，可全量/可自定义上限）
     let project_upload_mode = project_upload_mode
@@ -2292,7 +2284,7 @@ fn split_content_for_speed_test(path: &str, content: &str, max_lines: usize) -> 
         }];
     }
 
-    let num_chunks = (total_lines + max_lines - 1) / max_lines;
+    let num_chunks = total_lines.div_ceil(max_lines);
     let mut blobs = Vec::new();
 
     for chunk_idx in 0..num_chunks {
@@ -2405,6 +2397,7 @@ struct ProjectUploadResult {
 
 /// 项目上传测速：按文件列表读取内容并批量上传 blobs
 /// - `max_files`: Some(n) 表示最多测试 n 个文件（采样），None 表示全量
+#[allow(clippy::too_many_arguments)]
 async fn upload_project_for_speed_test(
     client: &reqwest::Client,
     base_url: &str,
@@ -2740,7 +2733,7 @@ fn parse_search_result_preview(body: &str) -> Option<super::types::SearchResultP
                 let snippet: String = lines.iter()
                     .skip(1)
                     .take(5)
-                    .map(|s| *s)
+                    .copied()
                     .collect::<Vec<_>>()
                     .join("\n");
                 

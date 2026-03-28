@@ -97,7 +97,7 @@ async fn start_telegram_mcp_listener(
     // 监听循环（简化版本，只等待发送或继续操作）
     loop {
         poll_count += 1;
-        if poll_count % 30 == 0 {
+        if poll_count.is_multiple_of(30) {
             // 每 30 次轮询（约 30 秒）记录一次心跳日志
             log_debug!("[telegram-mcp] 监听心跳: poll_count={}, offset={}, selected={}", 
                 poll_count, offset, selected_options.len());

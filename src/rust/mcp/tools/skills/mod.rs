@@ -458,9 +458,7 @@ fn normalize_skill_name(name: &str) -> String {
     for ch in name.chars() {
         if ch.is_ascii_alphanumeric() {
             out.push(ch.to_ascii_lowercase());
-        } else if ch == '-' || ch == '_' {
-            out.push('-');
-        } else if ch.is_ascii_whitespace() {
+        } else if ch == '-' || ch == '_' || ch.is_ascii_whitespace() {
             out.push('-');
         }
     }

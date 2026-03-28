@@ -243,8 +243,10 @@ impl MemoryManager {
 
     /// 获取记忆统计信息
     pub fn get_stats(&self) -> MemoryStats {
-        let mut stats = MemoryStats::default();
-        stats.total = self.store.entries.len();
+        let mut stats = MemoryStats {
+            total: self.store.entries.len(),
+            ..Default::default()
+        };
 
         for entry in &self.store.entries {
             match entry.category {

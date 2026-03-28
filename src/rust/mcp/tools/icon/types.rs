@@ -103,21 +103,16 @@ impl Default for IconSearchResult {
 // ============ 图标下载/保存相关类型 ============
 
 /// 图标格式枚举
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum IconFormat {
     /// SVG 矢量格式
+    #[default]
     Svg,
     /// PNG 位图格式
     Png,
     /// 同时保存 SVG 和 PNG
     Both,
-}
-
-impl Default for IconFormat {
-    fn default() -> Self {
-        Self::Svg
-    }
 }
 
 /// 图标保存请求

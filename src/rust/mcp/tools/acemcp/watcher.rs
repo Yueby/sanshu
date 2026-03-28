@@ -22,12 +22,7 @@ use crate::log_debug;
 fn normalize_project_path(path: &str) -> String {
     let mut p = path.to_string();
 
-    // 处理 //?/ 格式（canonicalize 在某些情况下返回）
-    if p.starts_with("//?/") {
-        p = p[4..].to_string();
-    }
-    // 处理 \\?\ 格式（Windows 扩展路径语法）
-    else if p.starts_with("\\\\?\\") {
+    if p.starts_with("//?/") || p.starts_with("\\\\?\\") {
         p = p[4..].to_string();
     }
 
@@ -54,6 +49,12 @@ pub struct WatcherManager {
     auto_index_enabled: Arc<Mutex<bool>>,
     /// 父目录 -> 嵌套子项目列表（用于智能路由文件变更到正确的子项目）
     nested_project_map: Arc<Mutex<HashMap<String, Vec<NestedWatchInfo>>>>,
+}
+
+impl Default for WatcherManager {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl WatcherManager {
@@ -387,7 +388,7 @@ impl WatcherManager {
 
 /// 全局监听器管理器实例
 static WATCHER_MANAGER: once_cell::sync::Lazy<WatcherManager> =
-    once_cell::sync::Lazy::new(|| WatcherManager::new());
+    once_cell::sync::Lazy::new(WatcherManager::new);
 
 /// 获取全局监听器管理器
 pub fn get_watcher_manager() -> &'static WatcherManager {

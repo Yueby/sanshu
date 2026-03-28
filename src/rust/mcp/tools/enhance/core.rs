@@ -291,8 +291,7 @@ impl PromptEnhancer {
     /// 截断并清理文本（避免换行和过长内容）
     fn truncate_text(text: &str, max_len: usize) -> String {
         let cleaned = text
-            .replace('\r', " ")
-            .replace('\n', " ")
+            .replace(['\r', '\n'], " ")
             .trim()
             .to_string();
 

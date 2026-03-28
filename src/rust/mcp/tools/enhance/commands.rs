@@ -40,6 +40,7 @@ fn cancel_request(request_id: &str) -> bool {
 
 /// 流式增强提示词（主要入口）
 /// 通过 Tauri Event 推送流式结果给前端
+#[allow(clippy::too_many_arguments)]
 #[tauri::command]
 pub async fn enhance_prompt_stream(
     app_handle: AppHandle,
