@@ -3,17 +3,12 @@ use serde::{Deserialize, Serialize};
 use crate::{log_important, log_debug};
 
 /// 代理类型
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum ProxyType {
+    #[default]
     Http,
     Socks5,
-}
-
-impl Default for ProxyType {
-    fn default() -> Self {
-        ProxyType::Http
-    }
 }
 
 impl std::fmt::Display for ProxyType {

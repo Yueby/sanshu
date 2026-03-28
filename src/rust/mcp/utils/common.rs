@@ -1,6 +1,6 @@
-/// MCP 通用工具函数模块
-///
-/// 包含 MCP 相关的通用工具函数和辅助方法
+//! MCP 通用工具函数模块
+//!
+//! 包含 MCP 相关的通用工具函数和辅助方法
 
 use anyhow::Result;
 use std::path::Path;

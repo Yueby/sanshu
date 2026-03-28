@@ -966,15 +966,12 @@ pub async fn get_config_file_path(app: AppHandle) -> Result<String, String> {
 fn normalize_path_display(path: &std::path::Path) -> String {
     // 如果文件存在，尝试获取规范路径
     let canonical_path = if path.exists() {
-        match path.canonicalize() {
-            Ok(canonical) => Some(canonical),
-            Err(_) => None,
-        }
+        path.canonicalize().ok()
     } else {
         None
     };
 
-    let display_path = canonical_path.as_ref().map(|p| p.as_path()).unwrap_or(path);
+    let display_path = canonical_path.as_deref().unwrap_or(path);
     let path_str = display_path.to_string_lossy();
 
     // 处理不同平台的路径格式

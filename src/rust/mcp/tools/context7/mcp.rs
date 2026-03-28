@@ -219,7 +219,7 @@ impl Context7Tool {
         // 从 library 参数中提取搜索关键词
         // 如果是 owner/repo 格式，使用 repo 部分；否则使用整个字符串
         let search_query = if request.library.contains('/') {
-            request.library.split('/').last().unwrap_or(&request.library)
+            request.library.split('/').next_back().unwrap_or(&request.library)
         } else {
             &request.library
         };

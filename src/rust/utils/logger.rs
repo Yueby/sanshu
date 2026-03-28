@@ -1,7 +1,7 @@
 use std::env;
 use std::fs::{self, OpenOptions};
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Mutex, Once};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use log::LevelFilter;
@@ -69,7 +69,7 @@ fn get_gui_log_path() -> Option<PathBuf> {
 }
 
 /// 确保日志目录存在
-fn ensure_log_directory(log_path: &PathBuf) -> std::io::Result<()> {
+fn ensure_log_directory(log_path: &Path) -> std::io::Result<()> {
     if let Some(parent) = log_path.parent() {
         if !parent.exists() {
             fs::create_dir_all(parent)?;
@@ -125,7 +125,7 @@ fn perform_log_rotation(log_path: &PathBuf, max_backup_count: u32) {
 }
 
 /// 清理过期的日志备份文件
-fn cleanup_old_logs(log_path: &PathBuf, rotation_config: &LogRotationConfig) {
+fn cleanup_old_logs(log_path: &Path, rotation_config: &LogRotationConfig) {
     let log_dir = match log_path.parent() {
         Some(dir) => dir,
         None => return,
@@ -295,7 +295,7 @@ impl RotatingFileWriter {
 
     fn lock_inner(&self) -> std::io::Result<std::sync::MutexGuard<'_, RotatingFileInner>> {
         self.inner.lock().map_err(|_| {
-            std::io::Error::new(std::io::ErrorKind::Other, "日志写入锁已被毒化（poisoned）")
+            std::io::Error::other("日志写入锁已被毒化（poisoned）")
         })
     }
 }

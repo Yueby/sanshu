@@ -1,5 +1,4 @@
 /// 字体配置常量
-
 // 默认字体系列
 pub const DEFAULT_FONT_FAMILY: &str = "inter";
 

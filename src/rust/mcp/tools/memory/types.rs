@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
@@ -32,16 +34,24 @@ pub enum MemoryCategory {
     Context,
 }
 
-impl MemoryCategory {
-    /// 从字符串解析分类
-    pub fn from_str(s: &str) -> Self {
-        match s.to_lowercase().as_str() {
+impl FromStr for MemoryCategory {
+    type Err = std::convert::Infallible;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s.to_lowercase().as_str() {
             "rule" | "规范" | "规则" => Self::Rule,
             "preference" | "偏好" => Self::Preference,
             "pattern" | "模式" | "最佳实践" => Self::Pattern,
             "context" | "背景" | "上下文" => Self::Context,
-            _ => Self::Rule, // 默认为规则
-        }
+            _ => Self::Rule,
+        })
+    }
+}
+
+impl MemoryCategory {
+    /// 从字符串解析分类
+    pub fn from_str(s: &str) -> Self {
+        <Self as FromStr>::from_str(s).unwrap()
     }
 
     /// 获取分类的中文名称

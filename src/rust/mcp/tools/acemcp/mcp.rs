@@ -788,18 +788,10 @@ fn has_local_blob_names(project_root: &str) -> bool {
 /// Windows 的 `canonicalize()` 会返回 `//?/C:/...` 或 `\\?\C:\...` 格式的路径，
 /// 这会导致前后端路径匹配失败。此函数确保路径格式统一。
 fn normalize_project_path(path: &str) -> String {
-    let mut p = path.to_string();
-    
-    // 处理 //?/ 格式（canonicalize 在某些情况下返回）
-    if p.starts_with("//?/") {
-        p = p[4..].to_string();
-    }
-    // 处理 \\?\ 格式（Windows 扩展路径语法）
-    else if p.starts_with("\\\\?\\") {
-        p = p[4..].to_string();
-    }
-    
-    // 统一使用正斜杠
+    let p = path
+        .strip_prefix("//?/")
+        .or_else(|| path.strip_prefix(r"\\?\"))
+        .unwrap_or(path);
     p.replace('\\', "/")
 }
 
@@ -913,9 +905,10 @@ where
     let project_status = all_status.projects
         .entry(normalized_root.clone())
         .or_insert_with(|| {
-            let mut status = ProjectIndexStatus::default();
-            status.project_root = normalized_root;
-            status
+            ProjectIndexStatus {
+                project_root: normalized_root,
+                ..Default::default()
+            }
         });
 
     updater(project_status);
@@ -935,9 +928,10 @@ fn get_project_status(project_root: &str) -> ProjectIndexStatus {
     );
 
     let mut status = all_status.projects.get(&normalized_root).cloned().unwrap_or_else(|| {
-        let mut status = ProjectIndexStatus::default();
-        status.project_root = normalized_root;
-        status
+        ProjectIndexStatus {
+            project_root: normalized_root,
+            ..Default::default()
+        }
     });
     enrich_project_scope_state(&mut status);
     status
@@ -1004,7 +998,7 @@ fn split_content(path: &str, content: &str, max_lines: usize) -> Vec<BlobItem> {
     }
 
     // 计算需要的 chunk 数量
-    let num_chunks = (total_lines + max_lines - 1) / max_lines;
+    let num_chunks = total_lines.div_ceil(max_lines);
     let mut blobs = Vec::new();
 
     // 按 chunk 索引分割（从 0 开始，但显示时从 1 开始）
@@ -1081,7 +1075,7 @@ fn build_gitignore(root: &Path) -> Option<Gitignore> {
     let gi_path = root.join(".gitignore");
     if gi_path.exists() {
         if builder.add(gi_path).is_some() { return None; }
-        return match builder.build() { Ok(gi) => Some(gi), Err(_) => None };
+        return builder.build().ok();
     }
     None
 }
@@ -1400,7 +1394,7 @@ pub(crate) async fn update_index(config: &AcemcpConfig, project_root_path: &str)
     let mut failed_batches: Vec<usize> = Vec::new();
     
     if !new_blobs.is_empty() {
-        let total_batches = (new_blobs.len() + batch_size - 1) / batch_size;
+        let total_batches = new_blobs.len().div_ceil(batch_size);
         log_important!(info,
             "=== 开始批量上传代码索引 ==="
         );
@@ -1590,7 +1584,7 @@ pub(crate) async fn update_index(config: &AcemcpConfig, project_root_path: &str)
 
     // 首次成功索引时，写入 ji 记忆
     if is_first_success {
-        let _ = write_index_memory_to_ji(project_root_path, config);
+        write_index_memory_to_ji(project_root_path, config);
     }
 
     log_important!(info, "索引更新完成，共 {} 个 blobs", blob_names.len());

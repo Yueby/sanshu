@@ -3,7 +3,7 @@
 
 use anyhow::Result;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use usvg::TreeParsing;
 
 use super::api;
@@ -135,7 +135,7 @@ pub async fn save_icons(request: IconSaveRequest) -> Result<IconSaveResult, Stri
 /// 保存单个图标
 async fn save_single_icon(
     icon: &IconItem,
-    save_dir: &PathBuf,
+    save_dir: &Path,
     format: &IconFormat,
     png_size: Option<u32>,
 ) -> Result<Vec<String>, String> {
@@ -288,11 +288,11 @@ pub fn get_icon_config(
         default_save_path: mcp.icon_default_save_path.clone()
             .or_else(|| Some("assets/icons".to_string())),
         default_format: mcp.icon_default_format.as_ref()
-            .and_then(|s| match s.as_str() {
-                "svg" => Some(IconFormat::Svg),
-                "png" => Some(IconFormat::Png),
-                "both" => Some(IconFormat::Both),
-                _ => Some(IconFormat::Svg),
+            .map(|s| match s.as_str() {
+                "svg" => IconFormat::Svg,
+                "png" => IconFormat::Png,
+                "both" => IconFormat::Both,
+                _ => IconFormat::Svg,
             })
             .unwrap_or(IconFormat::Svg),
         default_png_size: mcp.icon_default_png_size.or(Some(64)),

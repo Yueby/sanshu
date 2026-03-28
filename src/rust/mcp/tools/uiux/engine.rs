@@ -625,10 +625,8 @@ fn build_fuzzy_cols(search_cols: &'static [&'static str]) -> Vec<&'static str> {
     }
 
     for &col in search_cols {
-        if col.to_lowercase().contains("keyword") {
-            if seen.insert(col) {
-                out.push(col);
-            }
+        if col.to_lowercase().contains("keyword") && seen.insert(col) {
+            out.push(col);
         }
     }
 
@@ -1520,7 +1518,7 @@ fn wrap_text(text: &str, prefix: &str, width: usize) -> Vec<String> {
     let mut lines = Vec::new();
     let mut current = prefix.to_string();
     for word in text.split_whitespace() {
-        if current.len() + word.len() + 1 <= width - 2 {
+        if current.len() + word.len() < width - 2 {
             if current != prefix {
                 current.push(' ');
             }
@@ -2411,9 +2409,9 @@ pub fn generate_design_system(
 
     if persist {
         let project_slug = sanitize_slug(&design_system.project_name);
-        formatted.push_str("\n");
+        formatted.push('\n');
         formatted.push_str(&"=".repeat(60));
-        formatted.push_str("\n");
+        formatted.push('\n');
         formatted.push_str(&format!(
             "✅ Design system persisted to design-system/{}/\n",
             project_slug
@@ -2429,7 +2427,7 @@ pub fn generate_design_system(
                 project_slug, page_slug
             ));
         }
-        formatted.push_str("\n");
+        formatted.push('\n');
         formatted.push_str(&format!(
             "📖 Usage: When building a page, check design-system/{}/pages/[page].md first.\n",
             project_slug

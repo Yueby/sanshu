@@ -1,6 +1,6 @@
-/// MCP 错误处理工具模块
-/// 
-/// 提供统一的错误处理和转换功能
+//! MCP 错误处理工具模块
+//!
+//! 提供统一的错误处理和转换功能
 
 use rmcp::model::ErrorData as McpError;
 

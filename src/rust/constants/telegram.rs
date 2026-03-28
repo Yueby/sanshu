@@ -83,11 +83,11 @@ impl TelegramConfig {
         let mut current = String::new();
 
         for line in message.lines() {
-            if current.len() + line.len() + 1 > self.max_message_length {
-                if !current.is_empty() {
-                    parts.push(current);
-                    current = String::new();
-                }
+            if current.len() + line.len() + 1 > self.max_message_length
+                && !current.is_empty()
+            {
+                parts.push(current);
+                current = String::new();
             }
             
             if !current.is_empty() {
