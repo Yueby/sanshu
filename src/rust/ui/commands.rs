@@ -977,12 +977,7 @@ fn normalize_path_display(path: &std::path::Path) -> String {
     // 处理不同平台的路径格式
     #[cfg(target_os = "windows")]
     {
-        // Windows: 移除长路径前缀 \\?\
-        if path_str.starts_with(r"\\?\") {
-            path_str[4..].to_string()
-        } else {
-            path_str.to_string()
-        }
+        path_str.strip_prefix(r"\\?\").unwrap_or(&path_str).to_string()
     }
 
     #[cfg(target_os = "macos")]

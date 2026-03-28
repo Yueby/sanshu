@@ -67,7 +67,7 @@ impl MemoryTool {
                 }
 
                 // 使用 MemoryCategory 的新方法解析分类
-                let category = MemoryCategory::from_str(&request.category);
+                let category = MemoryCategory::parse(&request.category);
                 log_debug!("[ji] 执行记忆操作: category={:?}, content_len={}", category, request.content.len());
 
                 // 添加记忆（带去重检测）

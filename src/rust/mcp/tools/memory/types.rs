@@ -49,9 +49,8 @@ impl FromStr for MemoryCategory {
 }
 
 impl MemoryCategory {
-    /// 从字符串解析分类
-    pub fn from_str(s: &str) -> Self {
-        <Self as FromStr>::from_str(s).unwrap()
+    pub fn parse(s: &str) -> Self {
+        s.parse().unwrap()
     }
 
     /// 获取分类的中文名称

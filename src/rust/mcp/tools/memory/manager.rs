@@ -333,13 +333,11 @@ impl MemoryManager {
     /// 这在错误消息和日志中显示不友好，需要清理前缀。
     fn clean_display_path(path: &Path) -> String {
         let path_str = path.to_string_lossy();
-        // 处理 \\?\ 格式（Windows 扩展路径语法）
-        if path_str.starts_with(r"\\?\") {
-            return path_str[4..].to_string();
+        if let Some(stripped) = path_str.strip_prefix(r"\\?\") {
+            return stripped.to_string();
         }
-        // 处理 //?/ 格式（canonicalize 在某些情况下返回）
-        if path_str.starts_with("//?/") {
-            return path_str[4..].to_string();
+        if let Some(stripped) = path_str.strip_prefix("//?/") {
+            return stripped.to_string();
         }
         path_str.to_string()
     }
