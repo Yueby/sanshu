@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, useSlots } from 'vue';
+import { computed } from 'vue';
 
 defineOptions({ inheritAttrs: false })
 
@@ -51,14 +51,12 @@ const emit = defineEmits<{
   'negative-click': []
 }>()
 
-defineSlots<{
-  default(): any
-  header(): any
-  footer(): any
-  action(): any
+const slots = defineSlots<{
+  default(props: {}): any
+  header(props: {}): any
+  footer(props: {}): any
+  action(props: {}): any
 }>()
-
-const slots = useSlots()
 
 const hasCustomHeader = computed(() => !!slots.header)
 const useCustomCardHeader = computed(() => props.preset === 'card' && props.closable && !hasCustomHeader.value)

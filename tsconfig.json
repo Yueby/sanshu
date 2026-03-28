@@ -14,7 +14,10 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/frontend/*"]
-    }
+    },
+    "plugins": [
+      { "name": "@vue/typescript-plugin", "languages": ["vue"] }
+    ]
   },
   "include": [
     "src/frontend/**/*.ts",
