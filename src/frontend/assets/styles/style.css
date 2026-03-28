@@ -114,8 +114,8 @@ a:hover {
 
 /* 确保引用块的边框在所有主题下都显示 */
 .markdown-content blockquote {
-  border-left: 4px solid #14b8a6 !important;
-  padding-left: 1rem !important;
+  border-left: 2px solid var(--color-primary) !important;
+  padding-left: 0.75rem !important;
   margin-left: 0 !important;
   font-style: italic !important;
 }
