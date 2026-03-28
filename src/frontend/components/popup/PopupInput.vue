@@ -27,7 +27,7 @@ function editorInsertBadge(ed: ReturnType<typeof useEditor>['value'], attrs: Inl
   ]).run()
 }
 
-function editorRemoveBadge(ed: ReturnType<typeof useEditor>['value'], key: 'identity', value: string, all = false) {
+function editorRemoveBadge(ed: ReturnType<typeof useEditor>['value'], key: 'identity' | 'imageBadgeId', value: string, all = false) {
   if (!ed) return
   ed.chain().command(({ tr, state }) => {
     const targets: { from: number, to: number }[] = []
@@ -307,11 +307,23 @@ function syncDataWithEditor() {
   if (!editor.value) return
   const json = editor.value.getJSON()
   const presentRefIds = new Set<string>()
+  const presentImgIds = new Set<string>()
 
   walkNodes(json, (node: any) => {
     if (node.type === 'inlineBadge') {
       const attrs = node.attrs
-      if (attrs?.identity) {
+      if (attrs?.badgeType === 'image' && attrs?.imageBadgeId) {
+        const imgId = attrs.imageBadgeId
+        presentImgIds.add(imgId)
+        if (!imageBadgeMap.has(imgId) && imageBadgeArchive.has(imgId)) {
+          const archivedUrl = imageBadgeArchive.get(imgId)!
+          imageBadgeMap.set(imgId, archivedUrl)
+          if (!uploadedImages.value.includes(archivedUrl)) {
+            uploadedImages.value.push(archivedUrl)
+          }
+        }
+      }
+      else if (attrs?.identity) {
         presentRefIds.add(attrs.identity)
         if (!referencedFiles.value.some(ref => getReferenceIdentity(ref) === attrs.identity) && attrs.referenceData) {
           try { referencedFiles.value.push(JSON.parse(attrs.referenceData)) }
@@ -322,6 +334,17 @@ function syncDataWithEditor() {
   })
 
   referencedFiles.value = referencedFiles.value.filter(ref => presentRefIds.has(getReferenceIdentity(ref)))
+
+  for (const [id, dataUrl] of [...imageBadgeMap]) {
+    if (!presentImgIds.has(id)) {
+      imageBadgeMap.delete(id)
+      const idx = uploadedImages.value.indexOf(dataUrl)
+      if (idx > -1) {
+        uploadedImages.value.splice(idx, 1)
+        emit('imageRemove', idx)
+      }
+    }
+  }
 }
 
 function syncFromEditor() {
@@ -341,6 +364,7 @@ function buildRefBadgeAttrs(ref: FileReferenceAttachment): InlineBadgeAttrs {
     kind: getReferenceKindLabel(ref),
     serialized: getSerializedReferenceText(ref),
     referenceData: JSON.stringify(ref),
+    imageBadgeId: null,
     title: ref.type === 'url' ? (ref.url || '') : (ref.path || ''),
   }
 }
@@ -395,11 +419,59 @@ function tryParsePasteAsReference(text: string): boolean {
   return false
 }
 
-// ============ 图片管理 ============
+// ============ 图片 Badge ============
 
-function addImage(dataUrl: string): boolean {
+let nextImageBadgeId = 0
+const imageBadgeMap = new Map<string, string>()
+const imageBadgeArchive = new Map<string, string>()
+
+function addImageWithBadge(dataUrl: string, name: string): boolean {
   uploadedImages.value.push(dataUrl)
+  const badgeId = `img-${nextImageBadgeId++}`
+  imageBadgeMap.set(badgeId, dataUrl)
+  imageBadgeArchive.set(badgeId, dataUrl)
+
+  editorInsertBadge(editor.value, {
+    badgeType: 'image',
+    identity: '',
+    label: name,
+    kind: '图片',
+    serialized: name,
+    referenceData: '',
+    imageBadgeId: badgeId,
+    title: name,
+  })
+
+  userInput.value = serializeEditorContent()
   return true
+}
+
+function removeImageByBadgeId(badgeId: string) {
+  const dataUrl = imageBadgeMap.get(badgeId)
+  imageBadgeMap.delete(badgeId)
+
+  if (dataUrl) {
+    const idx = uploadedImages.value.indexOf(dataUrl)
+    if (idx > -1) {
+      uploadedImages.value.splice(idx, 1)
+      emit('imageRemove', idx)
+    }
+  }
+
+  editorRemoveBadge(editor.value, 'imageBadgeId', badgeId)
+  userInput.value = serializeEditorContent()
+  emitUpdate()
+}
+
+function removeImageBadgeByDataUrl(dataUrl: string) {
+  for (const [id, url] of imageBadgeMap) {
+    if (url === dataUrl) {
+      imageBadgeMap.delete(id)
+      editorRemoveBadge(editor.value, 'imageBadgeId', id)
+      break
+    }
+  }
+  userInput.value = serializeEditorContent()
 }
 
 // ============ 拖拽 & 粘贴 ============
@@ -447,7 +519,7 @@ async function handleDroppedPaths(paths: string[]) {
           dataUrl = result.dataUrl
           summary = compressionSummary(result)
         }
-        if (addImage(dataUrl)) {
+        if (addImageWithBadge(dataUrl, name)) {
           message.success(summary ? `图片 ${name} 已添加 (${summary})` : `图片 ${name} 已添加`)
           hasChanges = true
         }
@@ -541,7 +613,7 @@ async function handleImageFiles(files: FileList | File[]): Promise<void> {
         dataUrl = result.dataUrl
         summary = compressionSummary(result)
       }
-      if (addImage(dataUrl)) {
+      if (addImageWithBadge(dataUrl, name)) {
         message.success(summary ? `图片 ${name} 已添加 (${summary})` : `图片 ${name} 已添加`)
         emitUpdate()
       }
@@ -563,7 +635,9 @@ function fileToBase64(file: File): Promise<string> {
 }
 
 function removeImage(index: number) {
+  const dataUrl = uploadedImages.value[index]
   uploadedImages.value.splice(index, 1)
+  if (dataUrl) removeImageBadgeByDataUrl(dataUrl)
   emit('imageRemove', index)
   emitUpdate()
 }
@@ -632,6 +706,7 @@ function insertPromptContent(content: string, mode: 'replace' | 'append' = 'repl
     editor.value.commands.clearContent()
     referencedFiles.value = []
     uploadedImages.value = []
+    imageBadgeMap.clear()
   }
   else {
     editor.value.commands.focus('end')
@@ -859,6 +934,9 @@ function reset() {
   selectedOptions.value = []
   uploadedImages.value = []
   referencedFiles.value = []
+  imageBadgeMap.clear()
+  imageBadgeArchive.clear()
+  nextImageBadgeId = 0
   emitUpdate()
 }
 

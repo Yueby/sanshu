@@ -7,12 +7,13 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 const props = defineProps<{
   node: {
     attrs: {
-      badgeType: 'url' | 'path'
+      badgeType: 'url' | 'path' | 'image'
       identity: string
       label: string
       kind: string
       serialized: string
       referenceData: string
+      imageBadgeId: string | null
       title: string
     }
     nodeSize: number
@@ -30,6 +31,7 @@ const isUrl = computed(() => props.node.attrs.badgeType === 'url')
 
 const kindIcon = computed(() => {
   const { badgeType, kind } = props.node.attrs
+  if (badgeType === 'image') return 'i-carbon-image'
   if (badgeType === 'url') return 'i-carbon-link'
   if (kind === '目录') return 'i-carbon-folder'
   return 'i-carbon-document'
