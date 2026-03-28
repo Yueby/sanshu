@@ -68,26 +68,69 @@ async function showTestMcpPopup() {
     // 创建测试请求数据
     const testRequest = {
       id: `test-${Date.now()}`,
-      message: `# 🧪 测试弹窗功能
+      message: `# 一级标题
 
-这是一个**测试弹窗**，用于验证MCP popup组件的功能。
+这是一段**加粗文本**和*斜体文本*以及~~删除线~~。行内代码：\`console.log('hello')\`。
 
-## 功能特性
-- ✅ 支持 Markdown 格式显示
-- ✅ 支持预定义选项选择
-- ✅ 支持自由文本输入
-- ✅ 支持图片粘贴上传
+## 二级标题
 
-## 代码示例
-\`\`\`javascript
-// 这是一个代码示例
-function testPopup() {
-  console.log('测试弹窗功能')
-  return '成功'
+### 三级标题
+
+#### 四级标题
+
+---
+
+## 列表
+
+无序列表：
+- 第一项
+- 第二项
+  - 嵌套项 A
+  - 嵌套项 B
+- 第三项
+
+有序列表：
+1. 步骤一
+2. 步骤二
+3. 步骤三
+
+## 引用
+
+> 这是一段引用文本，用来测试引用块的样式。
+> 第二行引用。
+
+## 表格
+
+| 属性 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| size | string | medium | 组件尺寸 |
+| disabled | boolean | false | 是否禁用 |
+| loading | boolean | false | 加载状态 |
+
+## 代码块
+
+\`\`\`typescript
+interface UserConfig {
+  theme: 'light' | 'dark'
+  lang: string
+}
+
+function loadConfig(): UserConfig {
+  return { theme: 'dark', lang: 'zh-CN' }
 }
 \`\`\`
 
-请选择您要测试的功能，或者在下方输入框中添加您的反馈。`,
+横向滚动测试：
+
+\`\`\`javascript
+const veryLongVariableName = { key1: 'value1', key2: 'value2', key3: 'value3', key4: 'value4', key5: 'value5', key6: 'value6', key7: 'value7', key8: 'value8', key9: 'value9', key10: 'value10' }
+\`\`\`
+
+## 链接
+
+这是一个 [示例链接](https://example.com)，外部链接应被禁用。
+
+普通段落文本用于测试行距和字号是否符合 Naive UI 规范。`,
       predefined_options: ['测试选项功能', '测试文本输入', '测试图片上传', '测试Markdown渲染'],
       is_markdown: true,
     }

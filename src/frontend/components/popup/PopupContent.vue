@@ -147,28 +147,37 @@ function renderMarkdown(content: string) {
   }
 }
 
-// 创建复制按钮
+// 创建复制按钮（放在 pre 外层 wrapper 上，避免随横向滚动移动）
 function createCopyButton(preEl: Element) {
-  // 检查是否已经有复制按钮
-  if (preEl.querySelector('.copy-button'))
+  const parent = preEl.parentElement
+  if (!parent)
     return
+
+  // 如果已经包裹过，跳过
+  if (parent.classList.contains('code-block-wrapper'))
+    return
+
+  const wrapper = document.createElement('div')
+  wrapper.className = 'code-block-wrapper'
+  wrapper.style.cssText = 'position: relative;'
+  parent.insertBefore(wrapper, preEl)
+  wrapper.appendChild(preEl)
 
   const copyButton = document.createElement('div')
   copyButton.className = 'copy-button'
-  // 极简设计：无背景，无边框
   copyButton.style.cssText = `
     position: absolute;
     top: 8px;
     right: 8px;
-    z-index: 1000;
-    opacity: 1;
-    transition: opacity 0.2s ease;
-    pointer-events: auto;
+    z-index: 10;
     height: 20px;
     width: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
+    pointer-events: auto;
+    opacity: 0;
+    transition: opacity 0.15s ease;
   `
 
   copyButton.innerHTML = `
@@ -199,7 +208,6 @@ function createCopyButton(preEl: Element) {
       const textContent = codeEl?.textContent || preEl.textContent || ''
       await navigator.clipboard.writeText(textContent)
 
-      // 更新为成功状态
       const icon = button.querySelector('div')!
       icon.className = 'i-carbon-checkmark'
       icon.style.cssText = `width: 16px; height: 16px; color: var(--color-success); display: block;`
@@ -215,14 +223,7 @@ function createCopyButton(preEl: Element) {
     }
   })
 
-  // 确保父元素有相对定位和足够的层级
-  const preElement = preEl as HTMLElement
-  preElement.style.position = 'relative'
-  preElement.style.zIndex = '1'
-
-  // 按钮始终显示，不需要悬停事件
-
-  preElement.appendChild(copyButton)
+  wrapper.appendChild(copyButton)
 }
 
 // 设置内联代码复制
@@ -323,7 +324,7 @@ onUpdated(() => {
       <!-- 主要内容 -->
       <div
         v-if="request.is_markdown"
-        class="markdown-content prose prose-sm max-w-none prose-headings:font-semibold prose-headings:leading-tight prose-h1:!mt-4 prose-h1:!mb-2 prose-h1:!text-lg prose-h1:!font-bold prose-h1:!leading-tight prose-h2:!mt-3 prose-h2:!mb-1.5 prose-h2:!text-base prose-h2:!font-semibold prose-h2:!leading-tight prose-h3:!mt-2.5 prose-h3:!mb-1 prose-h3:!text-sm prose-h3:!font-medium prose-h3:!leading-tight prose-h4:!mt-2 prose-h4:!mb-1 prose-h4:!text-sm prose-h4:!font-medium prose-h4:!leading-tight prose-p:my-1 prose-p:leading-relaxed prose-p:text-sm prose-ul:my-1 prose-ul:text-sm prose-ul:pl-4 prose-ol:my-1 prose-ol:text-sm prose-ol:pl-4 prose-li:my-1 prose-li:text-sm prose-li:leading-relaxed prose-blockquote:my-2 prose-blockquote:text-sm prose-blockquote:pl-4 prose-blockquote:ml-0 prose-blockquote:italic prose-blockquote:border-l-4 prose-blockquote:border-primary-500 prose-pre:relative prose-pre:border prose-pre:rounded-lg prose-pre:p-4 prose-pre:my-3 prose-pre:overflow-x-auto scrollbar-code prose-code:px-1 prose-code:py-0.5 prose-code:text-xs prose-code:cursor-pointer prose-code:font-mono prose-a:text-primary-500 prose-a:no-underline prose-a:cursor-default [&_a[onclick='return false;']]:opacity-60 [&_a[onclick='return false;']]:cursor-not-allowed" :class="[
+        class="markdown-content prose prose-sm max-w-none prose-headings:font-semibold prose-headings:leading-tight prose-h1:!mt-3 prose-h1:!mb-1.5 prose-h1:!text-base prose-h1:!font-semibold prose-h2:!mt-2.5 prose-h2:!mb-1 prose-h2:!text-sm prose-h2:!font-semibold prose-h3:!mt-2 prose-h3:!mb-1 prose-h3:!text-sm prose-h3:!font-medium prose-h4:!mt-1.5 prose-h4:!mb-0.5 prose-h4:!text-xs prose-h4:!font-medium prose-p:my-1 prose-p:leading-relaxed prose-p:text-sm prose-ul:my-1 prose-ul:text-sm prose-ul:pl-4 prose-ol:my-1 prose-ol:text-sm prose-ol:pl-4 prose-li:my-0.5 prose-li:text-sm prose-li:leading-relaxed prose-blockquote:my-1.5 prose-blockquote:text-sm prose-blockquote:pl-3 prose-blockquote:ml-0 prose-blockquote:italic prose-blockquote:border-l-2 prose-blockquote:border-primary-500 prose-pre:border prose-pre:rounded-[3px] prose-pre:p-3 prose-pre:my-2 prose-pre:overflow-x-auto prose-pre:text-xs scrollbar-code prose-code:px-1 prose-code:py-0.5 prose-code:text-xs prose-code:rounded-[2px] prose-code:cursor-pointer prose-code:font-mono prose-a:text-primary-500 prose-a:no-underline prose-a:cursor-default" :class="[
           currentTheme === 'light' ? 'prose-slate' : 'prose-invert',
           'prose-headings:text-on-surface',
           currentTheme === 'light' ? 'prose-p:text-on-surface-secondary' : 'prose-p:text-on-surface prose-p:opacity-85',
@@ -369,5 +370,52 @@ onUpdated(() => {
 :deep(.markdown-content pre) {
   max-width: 100%;
   overflow-x: auto;
+}
+
+:deep(.markdown-content code:not(pre code)) {
+  background: var(--color-container-secondary);
+  color: var(--color-on-surface);
+}
+
+:deep(.markdown-content a[onclick='return false;']) {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+:deep(.markdown-content hr) {
+  margin: 0.5rem 0;
+  border-color: var(--color-border);
+  opacity: 0.5;
+}
+
+:deep(.markdown-content table) {
+  font-size: 12px;
+  margin: 0.5rem 0;
+  border-collapse: collapse;
+  width: 100%;
+}
+
+:deep(.markdown-content th),
+:deep(.markdown-content td) {
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  text-align: left;
+}
+
+:deep(.markdown-content th) {
+  background: var(--color-container-secondary);
+  font-weight: 600;
+}
+
+:deep(.markdown-content tr:hover td) {
+  background: color-mix(in srgb, var(--color-on-surface) 3%, transparent);
+}
+
+:deep(.code-block-wrapper:hover .copy-button) {
+  opacity: 1 !important;
+}
+
+:deep(.code-block-wrapper pre) {
+  padding-top: 2rem !important;
 }
 </style>
