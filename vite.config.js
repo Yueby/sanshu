@@ -27,6 +27,7 @@ export default defineConfig({
     chunkSizeWarningLimit: 1500,
     rollupOptions: {
       output: {
+        chunkFileNames: 'assets/[name]-[hash].js',
         manualChunks: {
           vendor: ['vue', '@vueuse/core'],
           markdown: ['markdown-it', 'highlight.js'],
