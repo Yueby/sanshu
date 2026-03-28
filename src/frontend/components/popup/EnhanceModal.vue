@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { CustomPrompt } from '../../types/popup'
-// 修复重复的 script setup 声明，避免 SFC 解析错误
 import { invoke } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { useMediaQuery } from '@vueuse/core'
