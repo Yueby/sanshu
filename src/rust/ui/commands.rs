@@ -1,7 +1,8 @@
 use crate::config::{save_config, save_custom_prompts, load_config, AppState, ReplyConfig, WindowConfig, CustomPrompt, CustomPromptConfig, ShortcutConfig, ShortcutBinding};
 use crate::constants::{window, ui, validation};
-use crate::mcp::types::{build_continue_response, build_send_response, ImageAttachment, PopupRequest};
+use crate::mcp::types::{build_continue_response, build_send_response, ImageAttachment, PopupRequest, TuRequest};
 use crate::mcp::handlers::create_tauri_popup;
+use crate::mcp::handlers::icon_popup::create_icon_popup;
 use tauri::{AppHandle, Manager, State};
 
 #[tauri::command]
@@ -713,14 +714,29 @@ pub fn build_mcp_continue_response(
 /// 创建测试popup窗口
 #[tauri::command]
 pub async fn create_test_popup(request: serde_json::Value) -> Result<String, String> {
-    // 将JSON值转换为PopupRequest
     let popup_request: PopupRequest = serde_json::from_value(request)
         .map_err(|e| format!("解析请求参数失败: {}", e))?;
 
-    // 调用现有的popup创建函数
     match create_tauri_popup(&popup_request) {
         Ok(response) => Ok(response),
         Err(e) => Err(format!("创建测试popup失败: {}", e))
+    }
+}
+
+/// 创建测试图标工坊弹窗
+#[tauri::command]
+pub async fn create_test_icon_popup() -> Result<String, String> {
+    let request = TuRequest {
+        query: Some("arrow".to_string()),
+        style: Some("all".to_string()),
+        save_path: None,
+        project_root: None,
+    };
+
+    match create_icon_popup(&request) {
+        Ok(response) => serde_json::to_string(&response)
+            .map_err(|e| format!("序列化响应失败: {}", e)),
+        Err(e) => Err(format!("创建测试图标弹窗失败: {}", e))
     }
 }
 
