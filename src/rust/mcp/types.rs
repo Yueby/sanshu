@@ -6,7 +6,7 @@ pub struct ZhiRequest {
     #[schemars(description = "要显示给用户的消息")]
     pub message: String,
     #[schemars(description = "预定义的选项列表（可选）")]
-    #[serde(default)]
+    #[serde(default, alias = "options")]
     pub predefined_options: Vec<String>,
     #[schemars(description = "消息是否为Markdown格式，默认为true")]
     #[serde(default = "default_is_markdown")]
