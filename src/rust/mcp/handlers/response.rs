@@ -94,7 +94,6 @@ fn build_structured_context_text(response: &McpResponse) -> String {
         sections.push(format!("附加上下文：\n{}", context_lines.join("\n")));
     }
 
-    // 区域 3：条件性执行偏好（独立字段，不再从 user_input 启发式拆分）
     if let Some(ctx) = response.conditional_context.as_ref() {
         let trimmed = ctx.trim();
         if !trimmed.is_empty() {
@@ -103,7 +102,7 @@ fn build_structured_context_text(response: &McpResponse) -> String {
                 .filter(|line| line.len() > 2)
                 .collect();
             if !pref_lines.is_empty() {
-                sections.push(format!("执行偏好：\n{}", pref_lines.join("\n")));
+                sections.push(format!("\n执行偏好：\n{}", pref_lines.join("\n")));
             }
         }
     }

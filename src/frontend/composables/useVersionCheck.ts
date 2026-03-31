@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
+import { relaunch } from '@tauri-apps/plugin-process'
 import { ref } from 'vue'
 
 const SKIPPED_VERSIONS_KEY = 'sanshu_skipped_versions'
@@ -19,9 +20,11 @@ interface UpdateProgress {
   percentage: number
 }
 
+const currentVersion = ref('')
 const updateInfo = ref<UpdateInfo | null>(null)
 const isChecking = ref(false)
 const isUpdating = ref(false)
+const updateDone = ref(false)
 const downloadProgress = ref(0)
 const error = ref<string | null>(null)
 
@@ -40,6 +43,10 @@ function saveSkippedVersions(versions: Set<string>) {
 }
 
 export function useVersionCheck() {
+  if (!currentVersion.value) {
+    invoke<string>('get_current_version').then(v => currentVersion.value = v).catch(() => {})
+  }
+
   async function checkForUpdate(ignoreSkipped = false) {
     error.value = null
     isChecking.value = true
@@ -83,13 +90,15 @@ export function useVersionCheck() {
       await invoke<string>('download_and_apply_update', {
         downloadUrl: updateInfo.value.download_url,
       })
-    }
-    catch (e) {
-      error.value = String(e)
-    }
-    finally {
       unlisten()
       isUpdating.value = false
+      updateDone.value = true
+      setTimeout(() => relaunch(), 1500)
+    }
+    catch (e) {
+      unlisten()
+      isUpdating.value = false
+      error.value = String(e)
     }
   }
 
@@ -103,9 +112,11 @@ export function useVersionCheck() {
   }
 
   return {
+    currentVersion,
     updateInfo,
     isChecking,
     isUpdating,
+    updateDone,
     downloadProgress,
     error,
     checkForUpdate,

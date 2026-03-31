@@ -3,7 +3,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { open } from '@tauri-apps/plugin-shell'
 import { useMessage } from 'naive-ui'
-import { onMounted, onUnmounted, ref, computed } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { useVersionCheck } from '../../composables/useVersionCheck'
 import AudioSettings from '../settings/AudioSettings.vue'
 import CustomPromptSettings from '../settings/CustomPromptSettings.vue'
@@ -17,9 +17,7 @@ import WindowSettings from '../settings/WindowSettings.vue'
 
 const expandedCards = ref<string[]>([])
 const imageCompressionEnabled = ref(true)
-const { updateInfo, isChecking, isUpdating, downloadProgress, error: updateError, checkForUpdate, downloadAndApply, skipVersion } = useVersionCheck()
-const hasUpdate = computed(() => updateInfo.value?.available ?? false)
-const currentVersion = computed(() => updateInfo.value?.current_version ?? '')
+const { currentVersion, updateInfo, isChecking, isUpdating, updateDone, downloadProgress, error: updateError, checkForUpdate, downloadAndApply, skipVersion } = useVersionCheck()
 
 async function loadImageCompressionSetting() {
   try {
@@ -133,62 +131,6 @@ function handleWindowSizeUpdate(size: { width: number, height: number, fixed: bo
 </script>
 
 <template>
-  <div class="max-w-3xl mx-auto mb-4">
-    <div class="flex items-center justify-between p-4 rounded-[3px] bg-container border border-border">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-lg bg-violet-100 dark:bg-violet-900 flex items-center justify-center shrink-0">
-          <div class="i-carbon-upgrade text-lg text-violet-600 dark:text-violet-400" />
-        </div>
-        <div>
-          <div class="text-sm font-medium">
-            三术 v{{ currentVersion || '...' }}
-          </div>
-          <div v-if="hasUpdate" class="text-xs text-success mt-0.5">
-            新版本 v{{ updateInfo!.latest_version }} 可用
-          </div>
-          <div v-else-if="updateError" class="text-xs text-error mt-0.5 max-w-60 truncate" :title="updateError">
-            检查失败: {{ updateError }}
-          </div>
-          <div v-else-if="updateInfo && !updateInfo.available" class="text-xs opacity-50 mt-0.5">
-            已是最新版本
-          </div>
-          <div v-else class="text-xs opacity-50 mt-0.5">
-            检查更新以获取最新功能
-          </div>
-        </div>
-      </div>
-      <div class="flex items-center gap-2">
-        <template v-if="isUpdating">
-          <n-progress type="circle" :percentage="downloadProgress" :show-indicator="true" :stroke-width="6" style="width: 36px" />
-        </template>
-        <template v-else-if="hasUpdate">
-          <n-button size="small" quaternary @click="skipVersion">
-            跳过
-          </n-button>
-          <n-button v-if="updateInfo!.download_url" size="small" type="primary" @click="downloadAndApply">
-            <template #icon>
-              <div class="i-carbon-download w-3.5 h-3.5" />
-            </template>
-            更新
-          </n-button>
-          <n-button size="small" quaternary @click="open(updateInfo!.release_url)">
-            <template #icon>
-              <div class="i-carbon-launch w-3.5 h-3.5" />
-            </template>
-          </n-button>
-        </template>
-        <template v-else>
-          <n-button size="small" :loading="isChecking" @click="checkForUpdate(true)">
-            <template #icon>
-              <div class="i-carbon-restart w-3.5 h-3.5" />
-            </template>
-            检查更新
-          </n-button>
-        </template>
-      </div>
-    </div>
-  </div>
-
   <n-collapse
     v-model:expanded-names="expandedCards"
     arrow-placement="right"
@@ -469,6 +411,113 @@ function handleWindowSizeUpdate(size: { width: number, height: number, fixed: bo
             </div>
           </div>
         </div>
+      </n-space>
+    </n-collapse-item>
+
+    <n-collapse-item name="version">
+      <template #header>
+        <div class="flex items-center flex-1 min-w-0">
+          <div class="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900 flex items-center justify-center mr-4 shrink-0">
+            <div class="i-carbon-update-now text-lg text-purple-600 dark:text-purple-400" />
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="text-base font-medium tracking-tight">
+              版本检查
+            </div>
+            <div class="text-xs opacity-60 font-normal mt-0.5">
+              检查应用更新和版本信息
+            </div>
+          </div>
+        </div>
+      </template>
+      <n-space vertical size="large">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center">
+            <div class="w-1.5 h-1.5 rounded-full mr-3 flex-shrink-0" :class="updateInfo?.available ? 'bg-success' : 'bg-info'" />
+            <div>
+              <div class="text-sm font-medium leading-relaxed">
+                当前版本 v{{ currentVersion || '...' }}
+              </div>
+              <div v-if="updateInfo?.available" class="text-xs text-success">
+                新版本 v{{ updateInfo.latest_version }} 可用
+              </div>
+              <div v-else-if="updateError" class="text-xs text-error truncate max-w-80" :title="updateError">
+                检查失败: {{ updateError }}
+              </div>
+              <div v-else-if="updateInfo && !updateInfo.available" class="text-xs opacity-50">
+                已是最新版本
+              </div>
+              <div v-else class="text-xs opacity-50">
+                点击检查获取最新版本
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <n-button size="small" :loading="isChecking" :disabled="isUpdating" @click="checkForUpdate(true)">
+              <template #icon>
+                <div class="i-carbon-restart w-4 h-4" />
+              </template>
+              检查更新
+            </n-button>
+          </div>
+        </div>
+
+        <template v-if="isUpdating">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <div class="text-xs opacity-60">
+                正在下载更新...
+              </div>
+              <div class="text-xs font-medium">
+                {{ downloadProgress }}%
+              </div>
+            </div>
+            <n-progress type="line" :percentage="downloadProgress" :show-indicator="false" status="info" :height="6" />
+          </div>
+        </template>
+
+        <template v-else-if="updateDone">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center">
+              <div class="w-1.5 h-1.5 bg-success rounded-full mr-3 flex-shrink-0" />
+              <div class="text-sm text-success font-medium">
+                更新完成，即将重启...
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <template v-else-if="updateInfo?.available">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center">
+              <div class="w-1.5 h-1.5 bg-success rounded-full mr-3 flex-shrink-0" />
+              <div>
+                <div class="text-sm font-medium leading-relaxed">
+                  v{{ updateInfo.latest_version }} 更新可用
+                </div>
+                <div v-if="updateInfo.release_notes" class="text-xs opacity-60 mt-1 max-w-100 line-clamp-2">
+                  {{ updateInfo.release_notes }}
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <n-button size="small" quaternary @click="skipVersion">
+                跳过
+              </n-button>
+              <n-button size="small" quaternary @click="open(updateInfo.release_url)">
+                <template #icon>
+                  <div class="i-carbon-launch w-3.5 h-3.5" />
+                </template>
+              </n-button>
+              <n-button v-if="updateInfo.download_url" size="small" type="primary" @click="downloadAndApply">
+                <template #icon>
+                  <div class="i-carbon-download w-4 h-4" />
+                </template>
+                下载并更新
+              </n-button>
+            </div>
+          </div>
+        </template>
       </n-space>
     </n-collapse-item>
   </n-collapse>
