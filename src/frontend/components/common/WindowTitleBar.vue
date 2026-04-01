@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import ThemeIcon from './ThemeIcon.vue'
 
 interface Props {
@@ -10,6 +10,7 @@ interface Props {
   showClose?: boolean
   currentTheme?: string
   customClose?: boolean
+  cancelCount?: number
 }
 
 interface Emits {
@@ -23,6 +24,17 @@ const props = withDefaults(defineProps<Props>(), {
   showClose: true,
   currentTheme: 'dark',
   customClose: false,
+  cancelCount: -1,
+})
+
+const closeBtnClass = computed(() => {
+  if (props.cancelCount == null || props.cancelCount < 0) return 'titlebar-close-btn'
+  return props.cancelCount >= 1 ? 'titlebar-close-confirm' : 'titlebar-close-warn'
+})
+
+const closeTitle = computed(() => {
+  if (props.cancelCount == null || props.cancelCount < 0) return '关闭'
+  return props.cancelCount >= 1 ? '确认结束对话' : '关闭'
 })
 
 const emit = defineEmits<Emits>()
@@ -126,8 +138,8 @@ async function handleClose() {
             size="tiny"
             quaternary
             circle
-            title="关闭"
-            class="titlebar-close-btn"
+            :title="closeTitle"
+            :class="closeBtnClass"
             @click="handleClose"
           >
             <template #icon>
@@ -141,8 +153,13 @@ async function handleClose() {
 </template>
 
 <style scoped>
-.titlebar-close-btn:hover {
+.titlebar-close-btn:hover,
+.titlebar-close-confirm:hover {
   background-color: color-mix(in srgb, var(--color-error) 80%, transparent) !important;
+  color: #fff !important;
+}
+.titlebar-close-warn:hover {
+  background-color: color-mix(in srgb, var(--color-warning) 80%, transparent) !important;
   color: #fff !important;
 }
 </style>

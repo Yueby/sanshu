@@ -229,6 +229,7 @@ onUnmounted(() => {
           :loading="false"
           :show-main-layout="showPopupSettings"
           :project-name="projectName"
+          :cancel-count="props.mcpRequest?.cancel_count ?? 0"
           :mcp-enabled="showMcpIndexStatus"
           :mcp-status-summary="statusSummary"
           :mcp-status-icon="statusIcon"

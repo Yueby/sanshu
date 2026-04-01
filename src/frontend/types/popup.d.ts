@@ -9,6 +9,7 @@ export interface McpRequest {
   uiux_intent?: 'none' | 'beautify' | 'page_refactor' | 'uiux_search'
   uiux_context_policy?: 'auto' | 'force' | 'forbid'
   uiux_reason?: string
+  cancel_count?: number
 }
 
 // 自定义prompt类型定义

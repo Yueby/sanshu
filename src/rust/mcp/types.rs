@@ -153,6 +153,8 @@ pub enum PopupRequest {
         uiux_intent: Option<String>,
         uiux_context_policy: Option<String>,
         uiux_reason: Option<String>,
+        #[serde(default)]
+        cancel_count: u32,
     },
     /// tu 图标工坊弹窗
     #[serde(rename = "icon")]

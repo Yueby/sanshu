@@ -1,3 +1,5 @@
+use std::sync::atomic::{AtomicU32, Ordering};
+
 use anyhow::Result;
 use rmcp::model::{ErrorData as McpError, CallToolResult, Content};
 
@@ -6,6 +8,8 @@ use crate::mcp::handlers::{create_tauri_popup, parse_mcp_response};
 use crate::mcp::utils::{generate_request_id, popup_error};
 use crate::mcp::utils::safe_truncate_clean;
 use crate::{log_important, log_debug};
+
+static CONSECUTIVE_CANCELS: AtomicU32 = AtomicU32::new(0);
 
 /// 智能代码审查交互工具
 ///
@@ -62,6 +66,7 @@ impl InteractionTool {
             uiux_intent: request.uiux_intent,
             uiux_context_policy: request.uiux_context_policy,
             uiux_reason: request.uiux_reason,
+            cancel_count: CONSECUTIVE_CANCELS.load(Ordering::Relaxed),
         };
 
         match create_tauri_popup(&popup_request) {
@@ -71,10 +76,33 @@ impl InteractionTool {
                     request_id,
                     response.len()
                 );
+
+                let is_cancel = {
+                    let t = response.trim().trim_matches('"');
+                    t == "CANCELLED" || t == "用户取消了操作"
+                };
+
                 let mut content = parse_mcp_response(&response)?;
-                content.push(Content::text(
-                    "\n[RULE] You MUST call zhi again as the last step of your next response. Do NOT end your turn without calling zhi."
-                ));
+
+                if is_cancel {
+                    let count = CONSECUTIVE_CANCELS.fetch_add(1, Ordering::Relaxed) + 1;
+                    if count >= 2 {
+                        CONSECUTIVE_CANCELS.store(0, Ordering::Relaxed);
+                        content.push(Content::text(
+                            "用户连续取消两次，对话结束。不要再调用 zhi。"
+                        ));
+                    } else {
+                        content.push(Content::text(
+                            "[RULE] User cancelled once. Call zhi to ask what they want. If user cancels again, end the conversation immediately."
+                        ));
+                    }
+                } else {
+                    CONSECUTIVE_CANCELS.store(0, Ordering::Relaxed);
+                    content.push(Content::text(
+                        "[RULE] You MUST call zhi again as the last step of your next response. Do NOT end your turn without calling zhi."
+                    ));
+                }
+
                 Ok(CallToolResult::success(content))
             }
             Err(e) => {
