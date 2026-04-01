@@ -43,8 +43,10 @@ jobs:
             echo "Read version from Cargo.toml: $VERSION"
 
             if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
-              echo "Error: Tag $TAG_NAME already exists. Bump version locally first."
-              exit 1
+              echo "Tag $TAG_NAME already exists, skipping tag creation."
+              echo "tag_exists=true" >> $GITHUB_OUTPUT
+            else
+              echo "tag_exists=false" >> $GITHUB_OUTPUT
             fi
 
             echo "version=$VERSION" >> $GITHUB_OUTPUT
@@ -55,10 +57,11 @@ jobs:
             echo "Triggered by tag: $TAG_NAME"
             echo "version=$VERSION" >> $GITHUB_OUTPUT
             echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+            echo "tag_exists=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: 创建 Tag (仅手动触发)
-        if: github.event_name == 'workflow_dispatch'
+      - name: 创建 Tag (仅手动触发且 Tag 不存在时)
+        if: github.event_name == 'workflow_dispatch' && steps.read_version.outputs.tag_exists == 'false'
         run: |
           TAG_NAME="${{ steps.read_version.outputs.tag_name }}"
           git config user.name "github-actions[bot]"
