@@ -3,7 +3,8 @@ use tauri::{AppHandle, Emitter, State};
 use crate::config::AppState;
 use std::path::Path;
 
-const GITHUB_API_URL: &str = "https://api.github.com/repos/Yueby/sanshu/releases/latest";
+const VERSION_URL: &str = "https://raw.githubusercontent.com/Yueby/sanshu/main/version.json";
+const GITHUB_API_RELEASE: &str = "https://api.github.com/repos/Yueby/sanshu/releases/tags";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateInfo {
@@ -20,6 +21,11 @@ pub struct UpdateProgress {
     pub downloaded: u64,
     pub total: u64,
     pub percentage: f64,
+}
+
+#[derive(Debug, Deserialize)]
+struct RemoteVersion {
+    version: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -58,6 +64,28 @@ fn build_client(state: &AppState) -> Result<reqwest::Client, String> {
     builder.build().map_err(|e| format!("创建 HTTP 客户端失败: {}", e))
 }
 
+fn build_download_client(state: &AppState) -> Result<reqwest::Client, String> {
+    let mut builder = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(600))
+        .user_agent("sanshu-updater");
+
+    if let Ok(config) = state.config.lock() {
+        if config.proxy_config.enabled {
+            let proxy_url = format!(
+                "{}://{}:{}",
+                config.proxy_config.proxy_type,
+                config.proxy_config.host,
+                config.proxy_config.port
+            );
+            if let Ok(proxy) = reqwest::Proxy::all(&proxy_url) {
+                builder = builder.proxy(proxy);
+            }
+        }
+    }
+
+    builder.build().map_err(|e| format!("创建下载客户端失败: {}", e))
+}
+
 fn pick_asset_url(assets: &[GithubAsset]) -> Option<String> {
     let target = if cfg!(target_os = "windows") {
         "windows"
@@ -83,6 +111,11 @@ fn pick_asset_url(assets: &[GithubAsset]) -> Option<String> {
         .map(|a| a.browser_download_url.clone())
 }
 
+fn fallback_release_info(tag: &str) -> (String, String, String) {
+    let url = format!("https://github.com/Yueby/sanshu/releases/tag/{}", tag);
+    (String::new(), url, String::new())
+}
+
 fn compare_versions(current: &str, latest: &str) -> bool {
     let parse = |v: &str| -> Vec<u32> {
         v.trim_start_matches('v').split('.').filter_map(|s| s.parse().ok()).collect()
@@ -97,32 +130,70 @@ pub async fn check_for_updates(state: State<'_, AppState>) -> Result<UpdateInfo,
     let current_version = env!("CARGO_PKG_VERSION").to_string();
     let client = build_client(&state)?;
 
-    let release: GithubRelease = client
-        .get(GITHUB_API_URL)
+    let resp = client
+        .get(VERSION_URL)
         .send()
         .await
-        .map_err(|e| format!("请求 GitHub API 失败: {}", e))?
+        .map_err(|e| format!("获取远程版本失败: {}", e))?;
+
+    if !resp.status().is_success() {
+        return Err(format!("获取远程版本失败: HTTP {}", resp.status()));
+    }
+
+    let remote: RemoteVersion = resp
         .json()
         .await
-        .map_err(|e| format!("解析响应失败: {}", e))?;
+        .map_err(|e| format!("解析版本信息失败: {}", e))?;
 
-    let latest_version = release.tag_name.trim_start_matches('v').to_string();
+    let latest_version = remote.version.trim_start_matches('v').to_string();
     let available = compare_versions(&current_version, &latest_version);
-    let download_url = pick_asset_url(&release.assets).unwrap_or_default();
+
+    if !available {
+        return Ok(UpdateInfo {
+            available: false,
+            current_version,
+            latest_version,
+            release_notes: String::new(),
+            release_url: String::new(),
+            download_url: String::new(),
+        });
+    }
+
+    let tag = format!("v{}", latest_version);
+    let api_url = format!("{}/{}", GITHUB_API_RELEASE, tag);
+
+    let (release_notes, release_url, download_url) = match client
+        .get(&api_url)
+        .header("Accept", "application/vnd.github.v3+json")
+        .send()
+        .await
+    {
+        Ok(resp) if resp.status().is_success() => {
+            match resp.json::<GithubRelease>().await {
+                Ok(release) => (
+                    release.body.unwrap_or_default(),
+                    release.html_url,
+                    pick_asset_url(&release.assets).unwrap_or_default(),
+                ),
+                Err(_) => fallback_release_info(&tag),
+            }
+        }
+        _ => fallback_release_info(&tag),
+    };
 
     Ok(UpdateInfo {
         available,
         current_version,
         latest_version,
-        release_notes: release.body.unwrap_or_default(),
-        release_url: release.html_url,
+        release_notes,
+        release_url,
         download_url,
     })
 }
 
 #[tauri::command]
 pub async fn download_and_apply_update(app: AppHandle, state: State<'_, AppState>, download_url: String) -> Result<String, String> {
-    let client = build_client(&state)?;
+    let client = build_download_client(&state)?;
 
     let response = client
         .get(&download_url)

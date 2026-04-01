@@ -5,7 +5,6 @@ import { useAppManager } from './composables/useAppManager'
 import { useEventHandlers } from './composables/useEventHandlers'
 import { useVersionCheck } from './composables/useVersionCheck'
 
-// 使用封装的应用管理器
 const {
   naiveTheme,
   mcpRequest,
@@ -17,18 +16,21 @@ const {
   actions,
 } = useAppManager()
 
-// 创建事件处理器
 const handlers = useEventHandlers(actions)
 
 const { updateInfo, updateDone, isUpdating, downloadProgress, checkForUpdate, downloadAndApply, confirmRestart } = useVersionCheck()
-const showUpdateAvailableModal = ref(false)
-const showRestartModal = ref(false)
+const showUpdateConfirm = ref(false)
+const showRestartConfirm = ref(false)
+
+function handleUpdateClick() {
+  showUpdateConfirm.value = true
+}
 
 async function handleConfirmUpdate() {
-  showUpdateAvailableModal.value = false
+  showUpdateConfirm.value = false
   await downloadAndApply()
   if (updateDone.value)
-    showRestartModal.value = true
+    showRestartConfirm.value = true
 }
 
 function setRootScrollLock(locked: boolean) {
@@ -50,10 +52,7 @@ onMounted(async () => {
     console.error('应用初始化失败:', error)
   }
 
-  checkForUpdate().then(() => {
-    if (updateInfo.value?.available)
-      showUpdateAvailableModal.value = true
-  })
+  checkForUpdate()
 })
 
 // 清理
@@ -89,14 +88,15 @@ onUnmounted(() => {
               @update-reply-config="handlers.onUpdateReplyConfig" 
               @message-ready="handlers.onMessageReady"
               @config-reloaded="handlers.onConfigReloaded"
+              @update-click="handleUpdateClick"
             />
           </n-dialog-provider>
         </n-notification-provider>
       </n-message-provider>
 
-      <!-- 第一步：发现新版本 -->
+      <!-- 确认更新 -->
       <n-modal
-        v-model:show="showUpdateAvailableModal"
+        v-model:show="showUpdateConfirm"
         preset="dialog"
         title="发现新版本"
         :content="`v${updateInfo?.latest_version} 可用，是否立即更新？`"
@@ -104,10 +104,10 @@ onUnmounted(() => {
         negative-text="跳过"
         type="info"
         @positive-click="handleConfirmUpdate"
-        @negative-click="showUpdateAvailableModal = false"
+        @negative-click="showUpdateConfirm = false"
       />
 
-      <!-- 下载中遮罩 -->
+      <!-- 下载进度 -->
       <n-modal :show="isUpdating" :mask-closable="false" :closable="false" preset="dialog" title="正在更新" type="info">
         <div class="py-2">
           <div class="text-sm mb-2 opacity-70">
@@ -120,17 +120,17 @@ onUnmounted(() => {
         </div>
       </n-modal>
 
-      <!-- 第二步：更新完成，确认重启 -->
+      <!-- 重启确认 -->
       <n-modal
-        v-model:show="showRestartModal"
+        v-model:show="showRestartConfirm"
         preset="dialog"
         title="更新完成"
-        content="新版本已下载并安装完成，是否立即重启应用？"
+        content="新版本已下载完成，是否立即重启应用？"
         positive-text="立即重启"
         negative-text="稍后"
         type="success"
         @positive-click="confirmRestart"
-        @negative-click="showRestartModal = false"
+        @negative-click="showRestartConfirm = false"
       />
     </n-config-provider>
   </div>
