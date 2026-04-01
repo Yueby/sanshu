@@ -46,17 +46,14 @@ fn parse_structured_response(response: McpResponse) -> Result<Vec<Content>, McpE
     for image in &response.images {
         result.push(Content::image(image.data.clone(), image.media_type.clone()));
         let name = image.filename.as_deref().unwrap_or("unnamed");
-        result.push(Content::text(format!("[Image: {}]", name)));
+        result.push(Content::text(format!("[image: {}]", name)));
     }
 
     let main_text = build_main_text(&response);
-    if !main_text.is_empty() {
-        result.push(Content::text(main_text));
-    }
-
     let pref_text = build_preference_text(&response);
-    if !pref_text.is_empty() {
-        result.push(Content::text(pref_text));
+    let combined = format!("{}{}", main_text, pref_text);
+    if !combined.is_empty() {
+        result.push(Content::text(combined));
     }
 
     if result.is_empty() {

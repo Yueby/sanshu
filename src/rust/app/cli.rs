@@ -174,6 +174,7 @@ fn handle_cli_mode(args: &[String]) -> Result<()> {
         uiux_context_policy,
         uiux_reason,
         cancel_count: 0,
+        prefill: None,
     };
     let request_json = serde_json::to_string(&request)?;
     std::env::set_var("SANSHU_CLI_MODE", "true");

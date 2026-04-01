@@ -30,7 +30,6 @@ struct RemoteVersion {
 
 #[derive(Debug, Deserialize)]
 struct GithubRelease {
-    tag_name: String,
     body: Option<String>,
     html_url: String,
     assets: Vec<GithubAsset>,

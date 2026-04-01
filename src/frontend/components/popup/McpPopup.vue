@@ -583,14 +583,10 @@ function buildLocalEnhancePrompt(rawInput: string) {
     '4. 只允许改写“原始口语化输入”；附加背景仅供理解，不能直接并入最终增强正文。',
     '5. 输出语言以中文为主。',
     '6. 不要解释分析过程，不要回答原弹窗问题，不要输出多余寒暄。',
-    '## 成功输出格式（必须严格遵守）',
-    '### BEGIN RESPONSE ###',
-    '<augment-enhanced-prompt>这里放增强后的结构化提示词</augment-enhanced-prompt>',
-    '### END RESPONSE ###',
-    '## 无法完成时的输出格式（必须严格遵守）',
-    '### BEGIN RESPONSE ###',
-    '无法基于真实代码分析生成增强提示词：请写明具体原因',
-    '### END RESPONSE ###',
+    '## 输出方式（必须严格遵守）',
+    '增强完成后，调用 zhi 工具时使用 `prefill` 参数将增强后的提示词预填到用户输入框，让用户可以二次编辑后发送。',
+    '示例调用：`zhi({ message: "增强完成，请确认或编辑后发送", prefill: "增强后的结构化提示词" })`',
+    '如果无法完成增强，调用 zhi 时在 message 中说明原因，不使用 prefill。',
     '## 项目分析条件',
     `- 项目根路径：${projectRoot}`,
     `- sou 工具前端检测状态：${souStatusText.value}`,
@@ -706,7 +702,7 @@ function handleOpenIndexStatus() {
       <div class="pb-2 px-1 select-text">
         <PopupInput
           ref="inputRef" :request="request" :loading="loading" :submitting="submitting"
-          :enhance-enabled="localEnhanceEnabled"
+          :enhance-enabled="localEnhanceEnabled" :prefill="request?.prefill || ''"
           @update="handleInputUpdate" @image-add="handleImageAdd" @image-remove="handleImageRemove"
           @enhance="handleEnhance"
           @open-mcp-tools-tab="handleOpenMcpToolsTab"

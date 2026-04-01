@@ -67,6 +67,7 @@ impl InteractionTool {
             uiux_context_policy: request.uiux_context_policy,
             uiux_reason: request.uiux_reason,
             cancel_count: CONSECUTIVE_CANCELS.load(Ordering::Relaxed),
+            prefill: request.prefill,
         };
 
         match create_tauri_popup(&popup_request) {

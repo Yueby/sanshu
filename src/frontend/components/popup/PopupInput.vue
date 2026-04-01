@@ -52,6 +52,7 @@ interface Props {
   loading?: boolean
   submitting?: boolean
   enhanceEnabled?: boolean
+  prefill?: string
 }
 
 interface Emits {
@@ -74,6 +75,7 @@ const props = withDefaults(defineProps<Props>(), {
   loading: false,
   submitting: false,
   enhanceEnabled: false,
+  prefill: '',
 })
 
 const emit = defineEmits<Emits>()
@@ -926,6 +928,11 @@ onMounted(async () => {
 
   window.addEventListener('keydown', _onGlobalKeyDown, true)
   window.addEventListener('keyup', _onGlobalKeyUp, true)
+
+  if (props.prefill && editor.value) {
+    editor.value.commands.setContent(props.prefill)
+    syncFromEditor()
+  }
 })
 
 onUnmounted(() => {
