@@ -61,6 +61,7 @@ interface Emits {
   updateReplyConfig: [config: { enable_continue_reply?: boolean, continue_prompt?: string }]
   messageReady: [message: any]
   configReloaded: []
+  updateClick: []
 }
 
 const props = defineProps<Props>()
@@ -241,6 +242,7 @@ onUnmounted(() => {
           @open-main-layout="togglePopupSettings"
           @open-log-viewer="openLogViewer"
           @open-index-status="showIndexDrawer = true"
+          @update-click="$emit('updateClick')"
         />
       </div>
       <!-- 标题栏占位，补偿 fixed 脱离文档流的高度 -->
@@ -356,7 +358,7 @@ onUnmounted(() => {
     <!-- 主界面 - 只在非弹窗模式且非初始化时显示 -->
     <div v-else class="flex flex-col h-screen overflow-hidden">
       <div class="flex-shrink-0 bg-container-secondary border-b border-border">
-        <WindowTitleBar title="三术 - 设置" :current-theme="props.appConfig.theme" @theme-change="$emit('themeChange', $event)" />
+        <WindowTitleBar title="三术 - 设置" :current-theme="props.appConfig.theme" @theme-change="$emit('themeChange', $event)" @update-click="$emit('updateClick')" />
       </div>
       <div class="flex-1 min-h-0 overflow-y-auto">
       <LayoutWrapper

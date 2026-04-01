@@ -2,6 +2,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { computed, onMounted, ref } from 'vue'
+import { useVersionCheck } from '../../composables/useVersionCheck'
 import ThemeIcon from './ThemeIcon.vue'
 
 interface Props {
@@ -16,6 +17,7 @@ interface Props {
 interface Emits {
   themeChange: [theme: string]
   close: []
+  updateClick: []
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -38,6 +40,8 @@ const closeTitle = computed(() => {
 })
 
 const emit = defineEmits<Emits>()
+
+const { updateInfo } = useVersionCheck()
 
 const appWindow = getCurrentWebviewWindow()
 const alwaysOnTop = ref(false)
@@ -94,8 +98,24 @@ async function handleClose() {
         <!-- 分隔线（仅在有插槽内容时可见） -->
         <div v-if="$slots.default" class="w-px h-3 shrink-0" style="background-color: color-mix(in srgb, var(--color-on-surface) 25%, transparent)" />
 
-        <!-- 置顶 + 主题切换 + 窗口控制 -->
+        <!-- 更新 + 置顶 + 主题切换 + 窗口控制 -->
         <n-space :size="2">
+          <n-tooltip v-if="updateInfo?.available" trigger="hover">
+            <template #trigger>
+              <n-button
+                size="tiny"
+                quaternary
+                circle
+                class="update-badge"
+                @click="emit('updateClick')"
+              >
+                <template #icon>
+                  <div class="i-carbon-upgrade w-3.5 h-3.5" />
+                </template>
+              </n-button>
+            </template>
+            v{{ updateInfo.latest_version }} 可用
+          </n-tooltip>
           <n-button
             size="tiny"
             quaternary
@@ -161,5 +181,13 @@ async function handleClose() {
 .titlebar-close-warn:hover {
   background-color: color-mix(in srgb, var(--color-warning) 80%, transparent) !important;
   color: #fff !important;
+}
+.update-badge {
+  color: var(--color-success) !important;
+  animation: pulse-subtle 2s ease-in-out infinite;
+}
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 </style>

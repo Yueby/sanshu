@@ -48,6 +48,8 @@ export function useVersionCheck() {
   }
 
   async function checkForUpdate(ignoreSkipped = false) {
+    if (isUpdating.value || updateDone.value) return
+
     error.value = null
     isChecking.value = true
     updateInfo.value = null

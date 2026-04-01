@@ -877,6 +877,12 @@ const editor = useEditor({
     attributes: {
       'data-guide': 'popup-input',
     },
+    handleKeyDown: (_view, event) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+        return true
+      }
+      return false
+    },
     handlePaste: (_view, event) => {
       return handleEditorPaste(event)
     },

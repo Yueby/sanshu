@@ -21,6 +21,7 @@ interface Emits {
   openMainLayout: []
   openLogViewer: []
   openIndexStatus: []
+  updateClick: []
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -67,7 +68,7 @@ function isAuthFailure(): boolean {
 </script>
 
 <template>
-  <WindowTitleBar :title="props.projectName ? `三术 · ${props.projectName}` : '三术'" :current-theme="props.currentTheme" :cancel-count="props.cancelCount" @theme-change="handleThemeChange">
+  <WindowTitleBar :title="props.projectName ? `三术 · ${props.projectName}` : '三术'" :current-theme="props.currentTheme" :cancel-count="props.cancelCount" @theme-change="handleThemeChange" @update-click="emit('updateClick')">
     <!-- MCP 代码索引状态 -->
     <n-tooltip
       v-if="mcpEnabled && mcpStatusSummary"
