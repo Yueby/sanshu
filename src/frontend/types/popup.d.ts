@@ -10,6 +10,7 @@ export interface McpRequest {
   uiux_context_policy?: 'auto' | 'force' | 'forbid'
   uiux_reason?: string
   cancel_count?: number
+  prefill?: string
 }
 
 // 自定义prompt类型定义

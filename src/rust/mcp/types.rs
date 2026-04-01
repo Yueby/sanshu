@@ -23,6 +23,9 @@ pub struct ZhiRequest {
     #[schemars(description = "UI/UX 上下文追加原因（可选）")]
     #[serde(default)]
     pub uiux_reason: Option<String>,
+    #[schemars(description = "预填充到用户输入框的文本（可选，用于增强结果回填）")]
+    #[serde(default)]
+    pub prefill: Option<String>,
 }
 
 fn default_is_markdown() -> bool {
@@ -155,6 +158,8 @@ pub enum PopupRequest {
         uiux_reason: Option<String>,
         #[serde(default)]
         cancel_count: u32,
+        #[serde(default)]
+        prefill: Option<String>,
     },
     /// tu 图标工坊弹窗
     #[serde(rename = "icon")]
