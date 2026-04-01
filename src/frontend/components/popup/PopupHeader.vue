@@ -6,6 +6,7 @@ interface Props {
   loading?: boolean
   showMainLayout?: boolean
   projectName?: string
+  cancelCount?: number
   mcpEnabled?: boolean
   mcpStatusSummary?: string
   mcpStatusIcon?: string
@@ -27,6 +28,7 @@ const props = withDefaults(defineProps<Props>(), {
   loading: false,
   showMainLayout: false,
   projectName: '',
+  cancelCount: 0,
   mcpEnabled: false,
   mcpStatusSummary: '',
   mcpStatusIcon: 'i-carbon-help text-on-surface-muted',
@@ -65,7 +67,7 @@ function isAuthFailure(): boolean {
 </script>
 
 <template>
-  <WindowTitleBar :title="props.projectName ? `三术 · ${props.projectName}` : '三术'" :current-theme="props.currentTheme" @theme-change="handleThemeChange">
+  <WindowTitleBar :title="props.projectName ? `三术 · ${props.projectName}` : '三术'" :current-theme="props.currentTheme" :cancel-count="props.cancelCount" @theme-change="handleThemeChange">
     <!-- MCP 代码索引状态 -->
     <n-tooltip
       v-if="mcpEnabled && mcpStatusSummary"

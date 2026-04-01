@@ -93,13 +93,16 @@ export function useVersionCheck() {
       unlisten()
       isUpdating.value = false
       updateDone.value = true
-      setTimeout(() => relaunch(), 1500)
     }
     catch (e) {
       unlisten()
       isUpdating.value = false
       error.value = String(e)
     }
+  }
+
+  function confirmRestart() {
+    relaunch()
   }
 
   function skipVersion() {
@@ -122,5 +125,6 @@ export function useVersionCheck() {
     checkForUpdate,
     downloadAndApply,
     skipVersion,
+    confirmRestart,
   }
 }

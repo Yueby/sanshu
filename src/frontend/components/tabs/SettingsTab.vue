@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
+import { relaunch } from '@tauri-apps/plugin-process'
 import { open } from '@tauri-apps/plugin-shell'
 import { useMessage } from 'naive-ui'
 import { onMounted, onUnmounted, ref } from 'vue'
@@ -95,15 +96,14 @@ onMounted(async () => {
     await loadConfigFilePath()
 
     unlistenConfigReloaded = await listen('config_reloaded', () => {
-      // 配置重载后，重新加载设置而不是刷新整个页面
       console.log('收到配置重载事件，重新加载设置')
-      // 触发重新加载设置的事件
       emit('configReloaded')
     })
   }
   catch (error) {
     console.error('设置配置重载监听器失败:', error)
   }
+
 })
 
 onUnmounted(() => {
@@ -481,9 +481,12 @@ function handleWindowSizeUpdate(size: { width: number, height: number, fixed: bo
             <div class="flex items-center">
               <div class="w-1.5 h-1.5 bg-success rounded-full mr-3 flex-shrink-0" />
               <div class="text-sm text-success font-medium">
-                更新完成，即将重启...
+                更新完成
               </div>
             </div>
+            <n-button size="small" type="primary" @click="relaunch()">
+              立即重启
+            </n-button>
           </div>
         </template>
 
@@ -521,5 +524,6 @@ function handleWindowSizeUpdate(size: { width: number, height: number, fixed: bo
       </n-space>
     </n-collapse-item>
   </n-collapse>
+
 </template>
 
