@@ -107,7 +107,7 @@ fn build_preference_text(response: &McpResponse) -> String {
                 .filter(|line| line.len() > 2)
                 .collect();
             if !pref_lines.is_empty() {
-                return format!("执行偏好：\n{}", pref_lines.join("\n"));
+                return format!("\n执行偏好：\n{}\n", pref_lines.join("\n"));
             }
         }
     }
