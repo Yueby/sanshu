@@ -1,0 +1,51 @@
+name: 自动打 Tag
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'version.json'
+
+jobs:
+  auto-tag:
+    name: 检测版本变更并打 Tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 读取版本号
+        id: version
+        run: |
+          VERSION=$(grep '"version"' version.json | head -1 | sed 's/.*: *"\(.*\)".*/\1/')
+          TAG_NAME="v$VERSION"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "Detected version: $VERSION"
+
+      - name: 检查 Tag 是否已存在
+        id: check
+        run: |
+          TAG_NAME="${{ steps.version.outputs.tag_name }}"
+          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Tag $TAG_NAME already exists, skipping."
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Tag $TAG_NAME does not exist, will create."
+          fi
+
+      - name: 创建并推送 Tag
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          TAG_NAME="${{ steps.version.outputs.tag_name }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
+          git push origin "$TAG_NAME"
+          echo "Created and pushed tag: $TAG_NAME"
