@@ -1,6 +1,6 @@
 [package]
 name = "sanshu"
-version = "0.5.12"
+version = "0.5.13"
 edition = "2021"
 default-run = "等一下"
 
