@@ -50,10 +50,13 @@ fn parse_structured_response(response: McpResponse) -> Result<Vec<Content>, McpE
     }
 
     let main_text = build_main_text(&response);
+    if !main_text.is_empty() {
+        result.push(Content::text(main_text));
+    }
+
     let pref_text = build_preference_text(&response);
-    let combined = format!("{}{}", main_text, pref_text);
-    if !combined.is_empty() {
-        result.push(Content::text(combined));
+    if !pref_text.is_empty() {
+        result.push(Content::text(pref_text));
     }
 
     if result.is_empty() {
@@ -70,7 +73,7 @@ fn build_main_text(response: &McpResponse) -> String {
     if let Some(user_input) = response.user_input.as_ref() {
         let trimmed = user_input.trim();
         if !trimmed.is_empty() {
-            sections.push(trimmed.to_string());
+            sections.push(format!("用户消息：\n{}", trimmed));
         }
     }
 
@@ -104,7 +107,7 @@ fn build_preference_text(response: &McpResponse) -> String {
                 .filter(|line| line.len() > 2)
                 .collect();
             if !pref_lines.is_empty() {
-                return format!("\n执行偏好：\n{}\n", pref_lines.join("\n"));
+                return format!("执行偏好：\n{}", pref_lines.join("\n"));
             }
         }
     }
